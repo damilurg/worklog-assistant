@@ -57,6 +57,7 @@ describe('Planner Export', () => {
         issues: [
           {
             key: 'CORE-123',
+            summary: 'Parser improvements',
             suggestedSeconds: 5400,
             remainingEstimateSeconds: null,
             activities: [
@@ -72,6 +73,8 @@ describe('Planner Export', () => {
     ]);
 
     expect(csv).toContain('Ticket No,Start Date,Timespent,Comment');
-    expect(csv).toContain('CORE-123,30-Sep-2026 20:00:51,1h 30m,"Fix parser, add tests"');
+    expect(csv).toContain(
+      'CORE-123,30-Sep-2026 20:00:51,1h 30m,"Parser improvements; Fix parser, add tests"',
+    );
   });
 });

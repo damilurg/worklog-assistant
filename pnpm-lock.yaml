@@ -68,6 +68,9 @@ importers:
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.3(postgres@3.4.9)
     devDependencies:
       '@types/node':
         specifier: ^22.7.4

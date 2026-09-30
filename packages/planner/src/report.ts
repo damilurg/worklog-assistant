@@ -1,5 +1,6 @@
-import { JiraClient } from '@worklog-assistant/jira';
 import { config } from '@worklog-assistant/config';
+import { db, jiraIssues, jiraWorklogs } from '@worklog-assistant/db';
+import { and, eq, gte, inArray, lte, or } from 'drizzle-orm';
 import { getDaySummary } from './index';
 
 interface StandupItem {
@@ -15,38 +16,56 @@ function formatHours(seconds: number): string {
 
 export async function generateStandupReport(dateStr: string): Promise<string> {
   const { issues: activityByIssue, unmatched } = await getDaySummary(dateStr);
-  const client = new JiraClient();
-  const jql = `"worklogAuthor" = currentUser() AND "worklogDate" = "${dateStr}"`;
-  const jiraIssueData = await client.searchIssues(jql);
-  const jiraIssueMap = new Map(jiraIssueData.map((issue) => [issue.key, issue]));
+  const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+  const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+  const authorFilter = config.JIRA_EMAIL
+    ? or(
+        eq(jiraWorklogs.authorEmail, config.JIRA_EMAIL),
+        eq(jiraWorklogs.authorAccountId, config.JIRA_EMAIL),
+      )
+    : undefined;
+  const localWorklogs = await db
+    .select()
+    .from(jiraWorklogs)
+    .where(
+      and(
+        gte(jiraWorklogs.startedAt, startOfDay),
+        lte(jiraWorklogs.startedAt, endOfDay),
+        authorFilter,
+      ),
+    );
+  const timeByIssue = new Map<string, number>();
+  for (const worklog of localWorklogs) {
+    timeByIssue.set(
+      worklog.jiraIssueKey,
+      (timeByIssue.get(worklog.jiraIssueKey) ?? 0) + worklog.durationSeconds,
+    );
+  }
+
   const allKeys = new Set([
     ...Array.from(activityByIssue.keys()).filter((key) => key !== 'AMBIGUOUS'),
-    ...jiraIssueMap.keys(),
+    ...timeByIssue.keys(),
   ]);
+  const allKeyList = [...allKeys];
+  const storedIssues =
+    allKeyList.length > 0
+      ? await db.select().from(jiraIssues).where(inArray(jiraIssues.key, allKeyList))
+      : [];
+  const storedSummaryMap = new Map(storedIssues.map((issue) => [issue.key, issue.summary]));
   const projectMap = new Map<string, StandupItem[]>();
 
   for (const key of allKeys) {
-    const issue = jiraIssueMap.get(key);
     const activities = activityByIssue.get(key) ?? [];
-    let timeSpentSeconds = 0;
-
-    if (issue) {
-      const worklogs = await client.getIssueWorklogs(key);
-      timeSpentSeconds = worklogs
-        .filter((worklog) => {
-          const isUser =
-            worklog.author.emailAddress === config.JIRA_EMAIL ||
-            worklog.author.accountId === config.JIRA_EMAIL;
-          return isUser && worklog.started.startsWith(dateStr);
-        })
-        .reduce((total, worklog) => total + worklog.timeSpentSeconds, 0);
-    }
-
     const uniqueActivities = [...new Set(activities.map((activity) => activity.title))];
-    const summary = issue?.fields.summary ?? uniqueActivities[0] ?? 'GitLab activity';
+    const summary = storedSummaryMap.get(key) ?? uniqueActivities[0] ?? 'GitLab activity';
     const projectKey = key.split('-')[0];
     const projectIssues = projectMap.get(projectKey) ?? [];
-    projectIssues.push({ key, summary, timeSpentSeconds, activities: uniqueActivities });
+    projectIssues.push({
+      key,
+      summary,
+      timeSpentSeconds: timeByIssue.get(key) ?? 0,
+      activities: uniqueActivities,
+    });
     projectMap.set(projectKey, projectIssues);
   }
 
@@ -61,10 +80,15 @@ export async function generateStandupReport(dateStr: string): Promise<string> {
       const time =
         item.timeSpentSeconds > 0 ? ` — Jira: ${formatHours(item.timeSpentSeconds)}h` : '';
       report += `- ${item.key}: ${item.summary}${time}\n`;
-      for (const activity of item.activities) {
-        if (activity !== item.summary) {
-          report += `  - GitLab: ${activity}\n`;
-        }
+      const activityDetails = item.activities.filter((activity) => activity !== item.summary);
+      const activityPreview =
+        activityDetails.length > 5 ? activityDetails.slice(0, 2) : activityDetails;
+      for (const activity of activityPreview) {
+        report += `  - GitLab: ${activity}\n`;
+      }
+      const hiddenCount = activityDetails.length - activityPreview.length;
+      if (hiddenCount > 0) {
+        report += `  - GitLab: ещё ${hiddenCount} событий\n`;
       }
     }
   }

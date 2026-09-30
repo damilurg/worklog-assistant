@@ -55,8 +55,7 @@ export async function syncJira(fromDate: Date, toDate: Date) {
           wl.author.emailAddress !== config.JIRA_EMAIL &&
           wl.author.accountId !== config.JIRA_EMAIL
         ) {
-          // basic fallback
-          // To be safe we could just save it anyway or filter by our email
+          continue;
         }
 
         recordsReceived++;
@@ -77,6 +76,8 @@ export async function syncJira(fromDate: Date, toDate: Date) {
             jiraWorklogId: wl.id,
             jiraIssueKey: issue.key,
             author: wl.author.displayName || wl.author.emailAddress || 'Unknown',
+            authorAccountId: wl.author.accountId,
+            authorEmail: wl.author.emailAddress,
             startedAt: new Date(wl.started),
             durationSeconds: wl.timeSpentSeconds,
             comment: commentText,
@@ -88,6 +89,9 @@ export async function syncJira(fromDate: Date, toDate: Date) {
             set: {
               startedAt: new Date(wl.started),
               durationSeconds: wl.timeSpentSeconds,
+              author: wl.author.displayName || wl.author.emailAddress || 'Unknown',
+              authorAccountId: wl.author.accountId,
+              authorEmail: wl.author.emailAddress,
               comment: commentText,
               updatedAt: new Date(wl.updated),
             },

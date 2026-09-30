@@ -5,6 +5,7 @@ import { inArray } from 'drizzle-orm';
 
 export interface ExportIssue {
   key: string;
+  summary: string | null;
   suggestedSeconds: number;
   remainingEstimateSeconds: number | null;
   activities: Array<{ type: string; title: string; occurredAt: string }>;
@@ -44,10 +45,12 @@ export async function generateExportData(fromDate: Date, toDate: Date) {
         ? await db.select().from(jiraIssues).where(inArray(jiraIssues.key, keys))
         : [];
     const estimateMap = new Map<string, number>();
+    const summaryMap = new Map<string, string>();
     issueData.forEach((i) => {
       if (i.remainingEstimateSeconds !== null && i.remainingEstimateSeconds !== undefined) {
         estimateMap.set(i.key, i.remainingEstimateSeconds);
       }
+      if (i.summary) summaryMap.set(i.key, i.summary);
     });
 
     let timeRemaining = 28800;
@@ -87,6 +90,7 @@ export async function generateExportData(fromDate: Date, toDate: Date) {
 
       dayExport.issues.push({
         key,
+        summary: summaryMap.get(key) ?? null,
         suggestedSeconds: allocations.get(key) || 0,
         remainingEstimateSeconds: estimateMap.get(key) || null,
         activities: activities.map((a) => ({
@@ -162,7 +166,12 @@ export function generateCsvExport(days: ExportDay[]): string {
     for (const issue of day.issues) {
       const uniqueActivities = [...new Set(issue.activities.map((activity) => activity.title))];
       const firstActivity = issue.activities[0]?.occurredAt ?? `${day.date}T09:00:00.000Z`;
-      const comment = uniqueActivities.join('; ') || `Work on ${issue.key}`;
+      const activityPreview =
+        uniqueActivities.length > 5 ? uniqueActivities.slice(0, 2) : uniqueActivities;
+      const hiddenCount = uniqueActivities.length - activityPreview.length;
+      const commentParts = [issue.summary, ...activityPreview].filter(Boolean);
+      if (hiddenCount > 0) commentParts.push(`Ещё ${hiddenCount} событий GitLab`);
+      const comment = commentParts.join('; ') || `Work on ${issue.key}`;
 
       rows.push(
         [

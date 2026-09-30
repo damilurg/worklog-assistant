@@ -36,13 +36,88 @@ export interface GitLabNote {
   resolvable: boolean;
 }
 
+interface GitLabClientOptions {
+  fetch?: typeof fetch;
+  sleep?: (milliseconds: number) => Promise<void>;
+  random?: () => number;
+  maxAttempts?: number;
+}
+
+const retryableStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+function retryAfterMilliseconds(response: Response): number | null {
+  const value = response.headers.get('retry-after');
+  if (!value) return null;
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : Math.max(0, timestamp - Date.now());
+}
+
 export class GitLabClient {
   private baseUrl: string;
   private token: string;
+  private fetchImpl: typeof fetch;
+  private sleep: (milliseconds: number) => Promise<void>;
+  private random: () => number;
+  private maxAttempts: number;
 
-  constructor(url: string, token: string) {
+  constructor(url: string, token: string, options: GitLabClientOptions = {}) {
     this.baseUrl = url.replace(/\/$/, '') + '/api/v4';
     this.token = token;
+    this.fetchImpl = options.fetch ?? fetch;
+    this.sleep =
+      options.sleep ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.random = options.random ?? Math.random;
+    this.maxAttempts = options.maxAttempts ?? 3;
+  }
+
+  private async fetchWithRetry(url: string): Promise<Response> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      try {
+        const response = await this.fetchImpl(url, {
+          headers: { 'PRIVATE-TOKEN': this.token },
+          signal: AbortSignal.timeout(30_000),
+        });
+
+        if (response.ok) return response;
+        if (!retryableStatuses.has(response.status)) {
+          throw new Error(`GitLab API error: ${response.status} ${response.statusText}`);
+        }
+
+        lastError = new Error(`GitLab API error: ${response.status} ${response.statusText}`);
+        if (attempt === this.maxAttempts) break;
+
+        const retryAfter = retryAfterMilliseconds(response);
+        const backoff = 500 * 2 ** (attempt - 1) + Math.floor(this.random() * 250);
+        const delay = Math.min(retryAfter ?? backoff, 30_000);
+        console.warn(
+          `[GitLab] Temporary error ${response.status}; retry ${attempt + 1}/${this.maxAttempts} in ${delay}ms`,
+        );
+        await this.sleep(delay);
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('GitLab API error:')) {
+          throw error;
+        }
+
+        lastError = error;
+        if (attempt === this.maxAttempts) break;
+
+        const delay = 500 * 2 ** (attempt - 1) + Math.floor(this.random() * 250);
+        console.warn(
+          `[GitLab] Network error; retry ${attempt + 1}/${this.maxAttempts} in ${delay}ms`,
+        );
+        await this.sleep(delay);
+      }
+    }
+
+    const message = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new Error(`GitLab request failed after ${this.maxAttempts} attempts: ${message}`);
   }
 
   private async request<T>(
@@ -63,15 +138,7 @@ export class GitLabClient {
 
     while (currentUrl) {
       console.log(`[GitLab] Fetching ${currentUrl}`);
-      const response = await fetch(currentUrl, {
-        headers: {
-          'PRIVATE-TOKEN': this.token,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`GitLab API error: ${response.status} ${response.statusText}`);
-      }
+      const response = await this.fetchWithRetry(currentUrl);
 
       const data = (await response.json()) as T[];
       results.push(...data);

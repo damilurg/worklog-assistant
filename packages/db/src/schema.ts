@@ -12,6 +12,23 @@ export const syncRuns = pgTable('sync_runs', {
   error: text('error'),
 });
 
+export const syncCoverage = pgTable(
+  'sync_coverage',
+  {
+    provider: text('provider').notNull(),
+    scope: text('scope').default('default').notNull(),
+    date: text('date').notNull(),
+    syncedAt: timestamp('synced_at').defaultNow().notNull(),
+  },
+  (t) => ({
+    unqProviderScopeDate: uniqueIndex('sync_coverage_provider_scope_date').on(
+      t.provider,
+      t.scope,
+      t.date,
+    ),
+  }),
+);
+
 export const gitlabProjects = pgTable('gitlab_projects', {
   id: text('id').primaryKey(), // stringified gitlab project ID
   name: text('name').notNull(),
@@ -97,6 +114,8 @@ export const jiraWorklogs = pgTable('jira_worklogs', {
   jiraWorklogId: text('jira_worklog_id').notNull().unique(),
   jiraIssueKey: text('jira_issue_key').notNull(),
   author: text('author').notNull(),
+  authorAccountId: text('author_account_id'),
+  authorEmail: text('author_email'),
   startedAt: timestamp('started_at').notNull(),
   durationSeconds: integer('duration_seconds').notNull(),
   comment: text('comment'),

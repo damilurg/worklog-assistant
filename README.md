@@ -59,6 +59,19 @@ pnpm day 2026-09-29
 
 All range flags are forwarded to the CLI. Reports synchronize GitLab and Jira first, which refreshes normalized activity before CSV/JSON generation. The generated `worklogs.csv` and `worklogs.json` files are ignored by Git.
 
+Successful provider/date pairs are stored in `sync_coverage` together with a token-free configuration fingerprint. Repeating the same command skips covered dates without calling the provider APIs; uncovered gaps are grouped into the smallest contiguous ranges. Changing instances, projects, authors, or Jira connection settings creates a new scope automatically. Use `--force` only when a date must be fetched again:
+
+```bash
+pnpm sync --from 2026-09-01 --to 2026-09-30 --force
+pnpm report --from 2026-09-01 --to 2026-09-30 --force
+```
+
+GitLab retries network errors, rate limits, and temporary server failures at most three times with exponential backoff. Authentication, permission, and not-found responses exit immediately. Failed ranges are never marked as covered.
+
+Combined sync and export commands treat both sources as best-effort: if GitLab or Jira is unavailable, they print a source-specific warning and continue with data already stored in PostgreSQL. A failed range is not marked as synchronized, so the next run can retry it. The standalone `pnpm gitlab` and `pnpm jira` commands still exit with an error for monitoring and automation.
+
+Report comments use the Jira issue summary, include at most two unique GitLab activities, and collapse the remainder into a counter.
+
 The full compiled CLI remains available:
 
 ```bash

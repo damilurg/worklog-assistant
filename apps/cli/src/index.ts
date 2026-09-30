@@ -10,15 +10,52 @@ import {
   generateStandupReport,
 } from '@worklog-assistant/planner';
 import { resolveDateRange, SyncPeriod } from './dateRange';
+import { syncIncrementally } from './incrementalSync';
 
 interface RangeOptions {
   from?: string;
   to?: string;
   period?: SyncPeriod;
+  force?: boolean;
 }
 
 function formatRange(fromDate: Date, toDate: Date): string {
   return `${fromDate.toISOString().slice(0, 10)} to ${toDate.toISOString().slice(0, 10)}`;
+}
+
+function errorDetails(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+
+  const cause = error.cause;
+  if (cause && typeof cause === 'object' && 'code' in cause) {
+    return `${error.message} (${String(cause.code)})`;
+  }
+
+  return error.message;
+}
+
+async function syncJiraBestEffort(fromDate: Date, toDate: Date, force = false): Promise<boolean> {
+  try {
+    await syncIncrementally('jira', { fromDate, toDate }, syncJira, force);
+    return true;
+  } catch (error) {
+    console.warn(
+      `[Jira] Sync failed; continuing with stored data. The range was not marked as synchronized: ${errorDetails(error)}`,
+    );
+    return false;
+  }
+}
+
+async function syncGitLabBestEffort(fromDate: Date, toDate: Date, force = false): Promise<boolean> {
+  try {
+    await syncIncrementally('gitlab', { fromDate, toDate }, syncGitLab, force);
+    return true;
+  } catch (error) {
+    console.warn(
+      `[GitLab] Sync failed; continuing with stored data. The range was not marked as synchronized: ${errorDetails(error)}`,
+    );
+    return false;
+  }
 }
 
 const program = new Command();
@@ -33,11 +70,12 @@ program
   .option('--from <date>', 'Start date (YYYY-MM-DD)')
   .option('--to <date>', 'End date (YYYY-MM-DD)')
   .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
+  .option('--force', 'Ignore synchronization coverage and fetch the range again')
   .action(async (options: RangeOptions) => {
     try {
       const { fromDate, toDate } = resolveDateRange(options);
       console.log(`Starting GitLab sync from ${formatRange(fromDate, toDate)}`);
-      await syncGitLab(fromDate, toDate);
+      await syncIncrementally('gitlab', { fromDate, toDate }, syncGitLab, options.force);
       console.log('Done!');
       process.exit(0);
     } catch (e) {
@@ -114,11 +152,12 @@ program
   .option('--from <date>', 'Start date (YYYY-MM-DD)')
   .option('--to <date>', 'End date (YYYY-MM-DD)')
   .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
+  .option('--force', 'Ignore synchronization coverage and fetch the range again')
   .action(async (options: RangeOptions) => {
     try {
       const { fromDate, toDate } = resolveDateRange(options);
       console.log(`Starting Jira sync from ${formatRange(fromDate, toDate)}`);
-      await syncJira(fromDate, toDate);
+      await syncIncrementally('jira', { fromDate, toDate }, syncJira, options.force);
       console.log('Done!');
       process.exit(0);
     } catch (e) {
@@ -133,13 +172,14 @@ program
   .option('--from <date>', 'Start date (YYYY-MM-DD)')
   .option('--to <date>', 'End date (YYYY-MM-DD)')
   .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
+  .option('--force', 'Ignore synchronization coverage and fetch the range again')
   .action(async (options: RangeOptions) => {
     try {
       const { fromDate, toDate } = resolveDateRange(options);
       console.log(`Starting GitLab and Jira sync from ${formatRange(fromDate, toDate)}`);
-      await syncGitLab(fromDate, toDate);
-      await syncJira(fromDate, toDate);
-      console.log('Done!');
+      const gitLabSynced = await syncGitLabBestEffort(fromDate, toDate, options.force);
+      const jiraSynced = await syncJiraBestEffort(fromDate, toDate, options.force);
+      console.log(gitLabSynced && jiraSynced ? 'Done!' : 'Done with source warnings.');
       process.exit(0);
     } catch (error) {
       console.error(error);
@@ -156,14 +196,15 @@ program
   .option('--format <format>', 'Export format: csv or json', 'csv')
   .option('--output <path>', 'Write export to a file instead of stdout')
   .option('--sync', 'Sync GitLab and Jira before exporting')
+  .option('--force', 'Ignore synchronization coverage and fetch the range again')
   .action(async (options: RangeOptions & { format: string; output?: string; sync?: boolean }) => {
     try {
       const { fromDate, toDate } = resolveDateRange(options);
 
       if (options.sync) {
         console.error(`Syncing GitLab and Jira from ${formatRange(fromDate, toDate)}`);
-        await syncGitLab(fromDate, toDate);
-        await syncJira(fromDate, toDate);
+        await syncGitLabBestEffort(fromDate, toDate, options.force);
+        await syncJiraBestEffort(fromDate, toDate, options.force);
       }
 
       const data = await generateExportData(fromDate, toDate);

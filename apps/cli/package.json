@@ -13,7 +13,8 @@
     "@worklog-assistant/db": "workspace:*",
     "@worklog-assistant/gitlab": "workspace:*",
     "@worklog-assistant/planner": "workspace:*",
-    "@worklog-assistant/jira": "workspace:*"
+    "@worklog-assistant/jira": "workspace:*",
+    "drizzle-orm": "^0.45.3"
   },
   "devDependencies": {
     "typescript": "^5.9.0",
