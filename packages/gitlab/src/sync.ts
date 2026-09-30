@@ -173,7 +173,6 @@ export async function syncGitLab(fromDate: Date, toDate: Date) {
 
     console.log(`GitLab sync complete. Received: ${recordsReceived}, Processed: ${recordsUpdated}`);
   } catch (err: any) {
-    console.error(err);
     await db
       .update(syncRuns)
       .set({

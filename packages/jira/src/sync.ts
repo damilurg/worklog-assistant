@@ -113,7 +113,6 @@ export async function syncJira(fromDate: Date, toDate: Date) {
 
     console.log(`Jira sync complete. Received: ${recordsReceived}, Processed: ${recordsCreated}`);
   } catch (err: any) {
-    console.error(err);
     await db
       .update(syncRuns)
       .set({
