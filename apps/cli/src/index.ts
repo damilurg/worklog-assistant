@@ -155,9 +155,17 @@ program
   .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
   .option('--format <format>', 'Export format: csv or json', 'csv')
   .option('--output <path>', 'Write export to a file instead of stdout')
-  .action(async (options: RangeOptions & { format: string; output?: string }) => {
+  .option('--sync', 'Sync GitLab and Jira before exporting')
+  .action(async (options: RangeOptions & { format: string; output?: string; sync?: boolean }) => {
     try {
       const { fromDate, toDate } = resolveDateRange(options);
+
+      if (options.sync) {
+        console.error(`Syncing GitLab and Jira from ${formatRange(fromDate, toDate)}`);
+        await syncGitLab(fromDate, toDate);
+        await syncJira(fromDate, toDate);
+      }
+
       const data = await generateExportData(fromDate, toDate);
       let output: string;
 

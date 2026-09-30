@@ -16,8 +16,8 @@
     "jira": "node apps/cli/dist/index.js jira sync",
     "sync": "node apps/cli/dist/index.js sync",
     "standup": "node apps/cli/dist/index.js report",
-    "report": "node apps/cli/dist/index.js export --format csv --output worklogs.csv",
-    "report:json": "node apps/cli/dist/index.js export --format json --output worklogs.json",
+    "report": "node apps/cli/dist/index.js export --sync --format csv --output worklogs.csv",
+    "report:json": "node apps/cli/dist/index.js export --sync --format json --output worklogs.json",
     "activity": "node apps/cli/dist/index.js activity",
     "day": "node apps/cli/dist/index.js day"
   },

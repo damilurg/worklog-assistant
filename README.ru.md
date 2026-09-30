@@ -48,14 +48,14 @@ pnpm sync                           # GitLab + Jira за вчера
 pnpm sync --period half-year        # GitLab + Jira за полгода
 pnpm standup                        # стендап за вчера
 pnpm standup --date 2026-09-29      # стендап за дату
-pnpm report                         # создать worklogs.csv за вчера
-pnpm report --period half-year      # создать worklogs.csv за полгода
-pnpm report:json                    # создать worklogs.json за вчера
+pnpm report                         # синхронизировать всё и создать worklogs.csv за вчера
+pnpm report --period half-year      # синхронизировать полгода и создать worklogs.csv
+pnpm report:json                    # синхронизировать всё и создать worklogs.json за вчера
 pnpm activity --from 2026-09-01
 pnpm day 2026-09-29
 ```
 
-Все флаги диапазона передаются в CLI. Сгенерированные `worklogs.csv` и `worklogs.json` исключены из Git.
+Все флаги диапазона передаются в CLI. Перед построением отчёта выполняется синхронизация GitLab и Jira, которая обновляет нормализованную activity. Сгенерированные `worklogs.csv` и `worklogs.json` исключены из Git.
 
 Полный собранный CLI также доступен:
 
