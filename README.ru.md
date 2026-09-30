@@ -13,8 +13,8 @@ Self-hosted приложение на TypeScript, которое собирае�
 - Извлечение ключей задач Jira из текста активности.
 - Просмотр активности и группировка по дням и задачам Jira.
 - Синхронизация задач и worklog из Jira.
-- JSON-экспорт с распределением восьмичасового рабочего дня.
-- Русскоязычный stand-up отчёт на основе worklog Jira.
+- CSV-экспорт для Jira с распределением восьмичасового рабочего дня; JSON также доступен.
+- Русскоязычный stand-up отчёт, объединяющий активность GitLab и worklog Jira.
 - Health-check Fastify API по адресу `GET /health`.
 
 Подтверждение плана, запись worklog в Jira, полноценный REST API и Web UI остаются в плане развития.
@@ -46,6 +46,8 @@ node apps/cli/dist/index.js gitlab sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js jira sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js activity --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js day 2026-09-30
+node apps/cli/dist/index.js export --from 2026-09-01 --to 2026-09-30 --format csv > worklogs.csv
+# Дополнительный структурированный формат
 node apps/cli/dist/index.js export --from 2026-09-01 --to 2026-09-30 --format json
 node apps/cli/dist/index.js report
 node apps/cli/dist/index.js report --date 2026-09-29

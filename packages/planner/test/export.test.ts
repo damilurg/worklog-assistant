@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { generateExportData } from '../src/export';
+import { generateCsvExport, generateExportData } from '../src/export';
 import * as plannerIndex from '../src/index';
 
 vi.mock('@worklog-assistant/db', () => {
@@ -24,9 +24,10 @@ vi.mock('../src/index', async (importOriginal) => {
 describe('Planner Export', () => {
   it('splits time with estimations', async () => {
     const mockMap = new Map();
-    mockMap.set('CORE-123', [{ type: 'commit', title: 'A' }]);
-    mockMap.set('ADMIN-82', [{ type: 'commit', title: 'B' }]);
-    mockMap.set('AMBIGUOUS', [{ type: 'commit', title: 'C' }]);
+    const occurredAt = new Date('2026-09-30T14:00:51Z');
+    mockMap.set('CORE-123', [{ type: 'commit', title: 'A', occurredAt }]);
+    mockMap.set('ADMIN-82', [{ type: 'commit', title: 'B', occurredAt }]);
+    mockMap.set('AMBIGUOUS', [{ type: 'commit', title: 'C', occurredAt }]);
 
     vi.mocked(plannerIndex.getDaySummary).mockResolvedValue({
       issues: mockMap,
@@ -46,5 +47,31 @@ describe('Planner Export', () => {
 
     expect(core123.suggestedSeconds).toBe(3600);
     expect(admin82.suggestedSeconds).toBe(25200); // 28800 - 3600
+  });
+
+  it('generates Jira-compatible CSV rows', () => {
+    const csv = generateCsvExport([
+      {
+        date: '2026-09-30',
+        targetSeconds: 28800,
+        issues: [
+          {
+            key: 'CORE-123',
+            suggestedSeconds: 5400,
+            remainingEstimateSeconds: null,
+            activities: [
+              {
+                type: 'commit',
+                title: 'Fix parser, add tests',
+                occurredAt: '2026-09-30T14:00:51.000Z',
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    expect(csv).toContain('Ticket No,Start Date,Timespent,Comment');
+    expect(csv).toContain('CORE-123,30-Sep-2026 20:00:51,1h 30m,"Fix parser, add tests"');
   });
 });

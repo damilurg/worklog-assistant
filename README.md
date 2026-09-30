@@ -13,8 +13,8 @@ The repository currently provides a CLI-first MVP. It reads Jira worklogs but do
 - Jira issue-key extraction from activity text.
 - Activity listing and daily grouping by Jira issue.
 - Jira issue/worklog synchronization.
-- JSON export with an eight-hour daily allocation.
-- Russian stand-up report generated from Jira worklogs.
+- Jira-compatible CSV export with an eight-hour daily allocation; JSON remains available.
+- Russian stand-up report combining GitLab activity with Jira worklogs.
 - Fastify health endpoint at `GET /health`.
 
 Approval, Jira write, full REST API, and web UI remain planned work.
@@ -48,6 +48,8 @@ node apps/cli/dist/index.js gitlab sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js jira sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js activity --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js day 2026-09-30
+node apps/cli/dist/index.js export --from 2026-09-01 --to 2026-09-30 --format csv > worklogs.csv
+# Optional structured output
 node apps/cli/dist/index.js export --from 2026-09-01 --to 2026-09-30 --format json
 node apps/cli/dist/index.js report
 node apps/cli/dist/index.js report --date 2026-09-29

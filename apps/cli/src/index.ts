@@ -5,6 +5,7 @@ import {
   getActivities,
   getDaySummary,
   generateExportData,
+  generateCsvExport,
   generateStandupReport,
 } from '@worklog-assistant/planner';
 
@@ -146,7 +147,7 @@ program
   .description('Export data for Jira Assistant')
   .option('--from <date>', 'Start date')
   .option('--to <date>', 'End date')
-  .option('--format <format>', 'Export format', 'json')
+  .option('--format <format>', 'Export format: csv or json', 'csv')
   .action(async (options) => {
     try {
       const fromDate = options.from ? new Date(options.from) : new Date();
@@ -154,8 +155,12 @@ program
 
       const data = await generateExportData(fromDate, toDate);
 
-      if (options.format === 'json') {
+      if (options.format === 'csv') {
+        process.stdout.write(generateCsvExport(data));
+      } else if (options.format === 'json') {
         console.log(JSON.stringify(data, null, 2));
+      } else {
+        throw new Error(`Unsupported export format: ${options.format}`);
       }
 
       process.exit(0);
@@ -180,6 +185,7 @@ program
       console.log('Generating report for ' + targetDate + '...');
       const report = await generateStandupReport(targetDate);
       console.log(report);
+      process.exit(0);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('Report failed:', message);
