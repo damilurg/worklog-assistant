@@ -42,6 +42,15 @@ pnpm build
 После `pnpm build` запускайте собранную точку входа:
 
 ```bash
+# GitLab + Jira за вчера (по умолчанию)
+node apps/cli/dist/index.js sync
+# Готовые периоды истории, заканчивающиеся вчера
+node apps/cli/dist/index.js sync --period week
+node apps/cli/dist/index.js sync --period month
+node apps/cli/dist/index.js sync --period half-year
+node apps/cli/dist/index.js sync --period year
+# Явный период для общей или отдельной синхронизации
+node apps/cli/dist/index.js sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js gitlab sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js jira sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js activity --from 2026-09-01 --to 2026-09-30
@@ -53,7 +62,15 @@ node apps/cli/dist/index.js report
 node apps/cli/dist/index.js report --date 2026-09-29
 ```
 
-Синхронизация GitLab и Jira по умолчанию охватывает предыдущие шесть месяцев. Отчёт по умолчанию строится за вчера. Полный список команд: `node apps/cli/dist/index.js --help`.
+Синхронизация и экспорт по умолчанию работают за вчера. Явные даты `--from/--to` имеют приоритет над `--period`. Отчёт также по умолчанию строится за вчера. Полный список команд: `node apps/cli/dist/index.js --help`.
+
+### Ежедневный запуск по расписанию
+
+Запускайте `node apps/cli/dist/index.js sync` один раз утром. В Windows Task Scheduler укажите `node` как программу, абсолютный путь `apps/cli/dist/index.js sync` как аргументы, а корень репозитория — в поле **Start in**. Для Linux/macOS пример запуска по будням:
+
+```cron
+0 9 * * 1-5 cd /path/to/worklog-assistant && node apps/cli/dist/index.js sync
+```
 
 ## Переменные окружения
 

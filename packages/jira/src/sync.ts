@@ -118,5 +118,6 @@ export async function syncJira(fromDate: Date, toDate: Date) {
         error: err.message,
       })
       .where(sql`id = ${syncRunId}`);
+    throw err;
   }
 }

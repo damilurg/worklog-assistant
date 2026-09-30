@@ -182,5 +182,6 @@ export async function syncGitLab(fromDate: Date, toDate: Date) {
         error: err.message,
       })
       .where(sql`id = ${syncRunId}`);
+    throw err;
   }
 }

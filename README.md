@@ -44,6 +44,15 @@ Configure `.env` before synchronization. See [.env.example](.env.example) for th
 After `pnpm build`, run the compiled entry point:
 
 ```bash
+# GitLab + Jira for yesterday (default)
+node apps/cli/dist/index.js sync
+# Preset history ranges ending yesterday
+node apps/cli/dist/index.js sync --period week
+node apps/cli/dist/index.js sync --period month
+node apps/cli/dist/index.js sync --period half-year
+node apps/cli/dist/index.js sync --period year
+# Explicit range, for either combined or provider-specific sync
+node apps/cli/dist/index.js sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js gitlab sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js jira sync --from 2026-09-01 --to 2026-09-30
 node apps/cli/dist/index.js activity --from 2026-09-01 --to 2026-09-30
@@ -55,7 +64,15 @@ node apps/cli/dist/index.js report
 node apps/cli/dist/index.js report --date 2026-09-29
 ```
 
-GitLab and Jira synchronization default to the previous six months. The report defaults to yesterday. Use `node apps/cli/dist/index.js --help` for the complete command list.
+Synchronization and export default to yesterday. Explicit `--from/--to` dates override `--period`. The report also defaults to yesterday. Use `node apps/cli/dist/index.js --help` for the complete command list.
+
+### Daily schedule
+
+Run `node apps/cli/dist/index.js sync` once every morning. On Windows, create a Task Scheduler action with `node` as the program, the absolute `apps/cli/dist/index.js sync` path as arguments, and the repository root as **Start in**. On Linux/macOS, a weekday cron entry can be:
+
+```cron
+0 9 * * 1-5 cd /path/to/worklog-assistant && node apps/cli/dist/index.js sync
+```
 
 ## Environment variables
 

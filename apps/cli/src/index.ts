@@ -8,6 +8,17 @@ import {
   generateCsvExport,
   generateStandupReport,
 } from '@worklog-assistant/planner';
+import { resolveDateRange, SyncPeriod } from './dateRange';
+
+interface RangeOptions {
+  from?: string;
+  to?: string;
+  period?: SyncPeriod;
+}
+
+function formatRange(fromDate: Date, toDate: Date): string {
+  return `${fromDate.toISOString().slice(0, 10)} to ${toDate.toISOString().slice(0, 10)}`;
+}
 
 const program = new Command();
 
@@ -20,27 +31,11 @@ program
   .description('Sync GitLab activity')
   .option('--from <date>', 'Start date (YYYY-MM-DD)')
   .option('--to <date>', 'End date (YYYY-MM-DD)')
-  .action(async (options) => {
-    let fromDate: Date;
-    let toDate: Date;
-
-    if (options.from) {
-      fromDate = new Date(options.from);
-    } else {
-      fromDate = new Date();
-      fromDate.setMonth(fromDate.getMonth() - 6);
-    }
-
-    if (options.to) {
-      toDate = new Date(options.to);
-    } else {
-      toDate = new Date();
-    }
-
-    console.log(
-      `Starting GitLab sync from ${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]}`,
-    );
+  .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
+  .action(async (options: RangeOptions) => {
     try {
+      const { fromDate, toDate } = resolveDateRange(options);
+      console.log(`Starting GitLab sync from ${formatRange(fromDate, toDate)}`);
       await syncGitLab(fromDate, toDate);
       console.log('Done!');
       process.exit(0);
@@ -117,22 +112,11 @@ program
   .description('Sync Jira worklogs')
   .option('--from <date>', 'Start date (YYYY-MM-DD)')
   .option('--to <date>', 'End date (YYYY-MM-DD)')
-  .action(async (options) => {
-    let fromDate: Date;
-    let toDate: Date;
-    if (options.from) {
-      fromDate = new Date(options.from);
-    } else {
-      fromDate = new Date();
-      fromDate.setMonth(fromDate.getMonth() - 6);
-    }
-    if (options.to) {
-      toDate = new Date(options.to);
-    } else {
-      toDate = new Date();
-    }
-    console.log('Starting Jira sync...');
+  .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
+  .action(async (options: RangeOptions) => {
     try {
+      const { fromDate, toDate } = resolveDateRange(options);
+      console.log(`Starting Jira sync from ${formatRange(fromDate, toDate)}`);
       await syncJira(fromDate, toDate);
       console.log('Done!');
       process.exit(0);
@@ -143,16 +127,35 @@ program
   });
 
 program
+  .command('sync')
+  .description('Sync both GitLab activity and Jira worklogs')
+  .option('--from <date>', 'Start date (YYYY-MM-DD)')
+  .option('--to <date>', 'End date (YYYY-MM-DD)')
+  .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
+  .action(async (options: RangeOptions) => {
+    try {
+      const { fromDate, toDate } = resolveDateRange(options);
+      console.log(`Starting GitLab and Jira sync from ${formatRange(fromDate, toDate)}`);
+      await syncGitLab(fromDate, toDate);
+      await syncJira(fromDate, toDate);
+      console.log('Done!');
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
+  });
+
+program
   .command('export')
   .description('Export data for Jira Assistant')
   .option('--from <date>', 'Start date')
   .option('--to <date>', 'End date')
+  .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
   .option('--format <format>', 'Export format: csv or json', 'csv')
-  .action(async (options) => {
+  .action(async (options: RangeOptions & { format: string }) => {
     try {
-      const fromDate = options.from ? new Date(options.from) : new Date();
-      const toDate = options.to ? new Date(options.to) : new Date();
-
+      const { fromDate, toDate } = resolveDateRange(options);
       const data = await generateExportData(fromDate, toDate);
 
       if (options.format === 'csv') {
