@@ -66,6 +66,7 @@ GitLab and Jira synchronization default to the previous six months. The report d
 | `JIRA_URL`             | For Jira commands | Jira site URL.                                                                            |
 | `JIRA_EMAIL`           | For Jira commands | Jira account email.                                                                       |
 | `JIRA_TOKEN`           | For Jira commands | Jira API token.                                                                           |
+| `JIRA_AUTH_MODE`       | No                | `cloud` for Basic/API v3 or `data-center` for Bearer PAT/API v2. Defaults to `cloud`.     |
 | `WORKDAY_HOURS`        | No                | Target workday length; defaults to `8`.                                                   |
 | `TIMEZONE`             | No                | IANA timezone; defaults to `Asia/Bishkek`.                                                |
 

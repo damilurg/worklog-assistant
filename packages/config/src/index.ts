@@ -54,6 +54,7 @@ const envSchema = z.object({
   JIRA_URL: z.string().url().optional(),
   JIRA_EMAIL: z.string().email().optional(),
   JIRA_TOKEN: z.string().optional(),
+  JIRA_AUTH_MODE: z.enum(['cloud', 'data-center']).default('cloud'),
 
   WORKDAY_HOURS: z.coerce.number().default(8),
   TIMEZONE: z.string().default('Asia/Bishkek'),

@@ -64,6 +64,7 @@ node apps/cli/dist/index.js report --date 2026-09-29
 | `JIRA_URL`             | Для Jira      | URL сайта Jira.                                                                                       |
 | `JIRA_EMAIL`           | Для Jira      | Email учётной записи Jira.                                                                            |
 | `JIRA_TOKEN`           | Для Jira      | API-токен Jira.                                                                                       |
+| `JIRA_AUTH_MODE`       | Нет           | `cloud` для Basic/API v3 или `data-center` для Bearer PAT/API v2. По умолчанию `cloud`.               |
 | `WORKDAY_HOURS`        | Нет           | Длина рабочего дня, по умолчанию `8`.                                                                 |
 | `TIMEZONE`             | Нет           | Часовой пояс IANA, по умолчанию `Asia/Bishkek`.                                                       |
 
