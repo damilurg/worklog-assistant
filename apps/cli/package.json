@@ -1,0 +1,22 @@
+{
+  "name": "@worklog-assistant/cli",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "@worklog-assistant/config": "workspace:*",
+    "@worklog-assistant/db": "workspace:*",
+    "@worklog-assistant/gitlab": "workspace:*",
+    "@worklog-assistant/planner": "workspace:*",
+    "@worklog-assistant/jira": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.7.4"
+  }
+}

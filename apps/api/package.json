@@ -1,0 +1,19 @@
+{
+  "name": "@worklog-assistant/api",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "@worklog-assistant/config": "workspace:*",
+    "@worklog-assistant/db": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.7.4"
+  }
+}
