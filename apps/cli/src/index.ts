@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { writeFile } from 'node:fs/promises';
 import { syncGitLab } from '@worklog-assistant/gitlab';
 import { syncJira } from '@worklog-assistant/jira';
 import {
@@ -153,17 +154,26 @@ program
   .option('--to <date>', 'End date')
   .option('--period <period>', 'yesterday, week, month, half-year, or year', 'yesterday')
   .option('--format <format>', 'Export format: csv or json', 'csv')
-  .action(async (options: RangeOptions & { format: string }) => {
+  .option('--output <path>', 'Write export to a file instead of stdout')
+  .action(async (options: RangeOptions & { format: string; output?: string }) => {
     try {
       const { fromDate, toDate } = resolveDateRange(options);
       const data = await generateExportData(fromDate, toDate);
+      let output: string;
 
       if (options.format === 'csv') {
-        process.stdout.write(generateCsvExport(data));
+        output = generateCsvExport(data);
       } else if (options.format === 'json') {
-        console.log(JSON.stringify(data, null, 2));
+        output = `${JSON.stringify(data, null, 2)}\n`;
       } else {
         throw new Error(`Unsupported export format: ${options.format}`);
+      }
+
+      if (options.output) {
+        await writeFile(options.output, output, 'utf8');
+        console.error(`Export written to ${options.output}`);
+      } else {
+        process.stdout.write(output);
       }
 
       process.exit(0);

@@ -39,7 +39,25 @@ pnpm build
 
 ## CLI
 
-После `pnpm build` запускайте собранную точку входа:
+После `pnpm build` используйте короткие команды из корня репозитория:
+
+```bash
+pnpm gitlab                         # GitLab за вчера
+pnpm jira                           # Jira за вчера
+pnpm sync                           # GitLab + Jira за вчера
+pnpm sync --period half-year        # GitLab + Jira за полгода
+pnpm standup                        # стендап за вчера
+pnpm standup --date 2026-09-29      # стендап за дату
+pnpm report                         # создать worklogs.csv за вчера
+pnpm report --period half-year      # создать worklogs.csv за полгода
+pnpm report:json                    # создать worklogs.json за вчера
+pnpm activity --from 2026-09-01
+pnpm day 2026-09-29
+```
+
+Все флаги диапазона передаются в CLI. Сгенерированные `worklogs.csv` и `worklogs.json` исключены из Git.
+
+Полный собранный CLI также доступен:
 
 ```bash
 # GitLab + Jira за вчера (по умолчанию)

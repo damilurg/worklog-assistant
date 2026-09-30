@@ -19,6 +19,8 @@ apps/*/dist/
 
 .env
 
+worklogs.csv
+worklogs.json
+
 
 .idea/
-

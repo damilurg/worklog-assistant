@@ -41,7 +41,25 @@ Configure `.env` before synchronization. See [.env.example](.env.example) for th
 
 ## CLI
 
-After `pnpm build`, run the compiled entry point:
+After `pnpm build`, use the short commands from the repository root:
+
+```bash
+pnpm gitlab                         # GitLab for yesterday
+pnpm jira                           # Jira for yesterday
+pnpm sync                           # GitLab + Jira for yesterday
+pnpm sync --period half-year        # GitLab + Jira for six months
+pnpm standup                        # stand-up for yesterday
+pnpm standup --date 2026-09-29      # stand-up for a date
+pnpm report                         # create worklogs.csv for yesterday
+pnpm report --period half-year      # create worklogs.csv for six months
+pnpm report:json                    # create worklogs.json for yesterday
+pnpm activity --from 2026-09-01
+pnpm day 2026-09-29
+```
+
+All range flags are forwarded to the CLI. The generated `worklogs.csv` and `worklogs.json` files are ignored by Git.
+
+The full compiled CLI remains available:
 
 ```bash
 # GitLab + Jira for yesterday (default)
