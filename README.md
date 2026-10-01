@@ -53,11 +53,16 @@ pnpm standup --date 2026-09-29      # stand-up for a date
 pnpm report                         # sync all sources and create worklogs.csv for yesterday
 pnpm report --period half-year      # sync six months and create worklogs.csv
 pnpm report:json                    # sync all sources and create worklogs.json for yesterday
+pnpm finish                         # finish today: sync, CSV, JSON, and stand-up
+pnpm get:report                     # finish today: CSV and JSON only
+pnpm get:standup                    # finish today: stand-up only
 pnpm activity --from 2026-09-01
 pnpm day 2026-09-29
 ```
 
 All range flags are forwarded to the CLI. Reports synchronize GitLab and Jira first, which refreshes normalized activity before CSV/JSON generation. The generated `worklogs.csv` and `worklogs.json` files are ignored by Git.
+
+At the end of the workday, run `pnpm finish` without dates. It uses today's date in `TIMEZONE`, synchronizes both sources once, creates upload-ready `worklogs.csv` and `worklogs.json`, and writes plus prints `standup.md`. Repeated runs reuse synchronization coverage; use `pnpm finish --force` only when a full refresh is needed.
 
 Successful provider/date pairs are stored in `sync_coverage` together with a token-free configuration fingerprint. Repeating the same command skips covered dates without calling the provider APIs; uncovered gaps are grouped into the smallest contiguous ranges. Changing instances, projects, authors, or Jira connection settings creates a new scope automatically. Use `--force` only when a date must be fetched again:
 

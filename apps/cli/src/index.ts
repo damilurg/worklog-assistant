@@ -11,6 +11,7 @@ import {
 } from '@worklog-assistant/planner';
 import { resolveDateRange, SyncPeriod } from './dateRange';
 import { syncIncrementally } from './incrementalSync';
+import { config } from '@worklog-assistant/config';
 
 interface RangeOptions {
   from?: string;
@@ -56,6 +57,21 @@ async function syncGitLabBestEffort(fromDate: Date, toDate: Date, force = false)
     );
     return false;
   }
+}
+
+async function syncSourcesBestEffort(fromDate: Date, toDate: Date, force = false) {
+  const gitLabSynced = await syncGitLabBestEffort(fromDate, toDate, force);
+  const jiraSynced = await syncJiraBestEffort(fromDate, toDate, force);
+  return { gitLabSynced, jiraSynced };
+}
+
+function todayInConfiguredTimezone(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: config.TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 const program = new Command();
@@ -177,8 +193,11 @@ program
     try {
       const { fromDate, toDate } = resolveDateRange(options);
       console.log(`Starting GitLab and Jira sync from ${formatRange(fromDate, toDate)}`);
-      const gitLabSynced = await syncGitLabBestEffort(fromDate, toDate, options.force);
-      const jiraSynced = await syncJiraBestEffort(fromDate, toDate, options.force);
+      const { gitLabSynced, jiraSynced } = await syncSourcesBestEffort(
+        fromDate,
+        toDate,
+        options.force,
+      );
       console.log(gitLabSynced && jiraSynced ? 'Done!' : 'Done with source warnings.');
       process.exit(0);
     } catch (error) {
@@ -203,8 +222,7 @@ program
 
       if (options.sync) {
         console.error(`Syncing GitLab and Jira from ${formatRange(fromDate, toDate)}`);
-        await syncGitLabBestEffort(fromDate, toDate, options.force);
-        await syncJiraBestEffort(fromDate, toDate, options.force);
+        await syncSourcesBestEffort(fromDate, toDate, options.force);
       }
 
       const data = await generateExportData(fromDate, toDate);
@@ -228,6 +246,46 @@ program
       process.exit(0);
     } catch (e) {
       console.error(e);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('finish')
+  .description('Sync today and prepare upload files and/or a stand-up')
+  .option('-d, --date <date>', 'Work date in YYYY-MM-DD format (default: today)')
+  .option('--only <target>', 'all, report, or standup', 'all')
+  .option('--force', 'Ignore synchronization coverage and fetch the date again')
+  .action(async (options: { date?: string; only: string; force?: boolean }) => {
+    try {
+      if (!['all', 'report', 'standup'].includes(options.only)) {
+        throw new Error('--only must be all, report, or standup.');
+      }
+
+      const targetDate = options.date ?? todayInConfiguredTimezone();
+      const { fromDate, toDate } = resolveDateRange({ from: targetDate, to: targetDate });
+      console.log(`Finishing workday ${targetDate}: syncing GitLab and Jira...`);
+      await syncSourcesBestEffort(fromDate, toDate, options.force);
+
+      if (options.only === 'all' || options.only === 'report') {
+        const data = await generateExportData(fromDate, toDate);
+        await Promise.all([
+          writeFile('worklogs.csv', generateCsvExport(data), 'utf8'),
+          writeFile('worklogs.json', `${JSON.stringify(data, null, 2)}\n`, 'utf8'),
+        ]);
+        console.log('Worklogs written to worklogs.csv and worklogs.json');
+      }
+
+      if (options.only === 'all' || options.only === 'standup') {
+        const report = await generateStandupReport(targetDate);
+        await writeFile('standup.md', `${report.trimEnd()}\n`, 'utf8');
+        console.log(`\n${report}`);
+        console.log('Stand-up written to standup.md');
+      }
+
+      process.exit(0);
+    } catch (error) {
+      console.error('Finish workflow failed:', errorDetails(error));
       process.exit(1);
     }
   });

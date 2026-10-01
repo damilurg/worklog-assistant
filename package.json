@@ -18,6 +18,9 @@
     "standup": "node apps/cli/dist/index.js report",
     "report": "node apps/cli/dist/index.js export --sync --format csv --output worklogs.csv",
     "report:json": "node apps/cli/dist/index.js export --sync --format json --output worklogs.json",
+    "finish": "node apps/cli/dist/index.js finish",
+    "get:report": "node apps/cli/dist/index.js finish --only report",
+    "get:standup": "node apps/cli/dist/index.js finish --only standup",
     "activity": "node apps/cli/dist/index.js activity",
     "day": "node apps/cli/dist/index.js day"
   },

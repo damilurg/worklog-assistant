@@ -21,6 +21,7 @@ apps/*/dist/
 
 worklogs.csv
 worklogs.json
+standup.md
 
 
 .idea/
