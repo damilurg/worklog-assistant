@@ -14,7 +14,53 @@ function formatHours(seconds: number): string {
   return (seconds / 3600).toFixed(1).replace('.0', '');
 }
 
+function formatDisplayDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-');
+  return `${day}.${month}.${year}`;
+}
+
+function shiftDate(dateStr: string, days: number): string {
+  const date = new Date(`${dateStr}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function todayInConfiguredTimezone(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: config.TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+export function buildStandupHeadings(dateStr: string, today = todayInConfiguredTimezone()) {
+  const displayDate = formatDisplayDate(dateStr);
+
+  if (dateStr === today) {
+    const tomorrow = shiftDate(dateStr, 1);
+    return {
+      completed: `Сегодня (${displayDate})`,
+      planned: `Завтра (${formatDisplayDate(tomorrow)})`,
+    };
+  }
+
+  if (dateStr === shiftDate(today, -1)) {
+    return {
+      completed: `Вчера (${displayDate})`,
+      planned: `Сегодня (${formatDisplayDate(today)})`,
+    };
+  }
+
+  const nextDate = shiftDate(dateStr, 1);
+  return {
+    completed: `За ${displayDate}`,
+    planned: `Следующий день (${formatDisplayDate(nextDate)})`,
+  };
+}
+
 export async function generateStandupReport(dateStr: string): Promise<string> {
+  const headings = buildStandupHeadings(dateStr);
   const { issues: activityByIssue, unmatched } = await getDaySummary(dateStr);
   const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
   const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
@@ -70,10 +116,10 @@ export async function generateStandupReport(dateStr: string): Promise<string> {
   }
 
   if (projectMap.size === 0 && unmatched.length === 0) {
-    return 'Вчера: Нет активности в GitLab и worklog в Jira.\n\nСегодня:\n- Планирую задачи...';
+    return `${headings.completed}: Нет активности в GitLab и worklog в Jira.\n\n${headings.planned}:\n- Планирую задачи...`;
   }
 
-  let report = 'Вчера:\n';
+  let report = `${headings.completed}:\n`;
   for (const [project, projectIssues] of projectMap.entries()) {
     report += `\n**Проект ${project}**:\n`;
     for (const item of projectIssues) {
@@ -102,8 +148,8 @@ export async function generateStandupReport(dateStr: string): Promise<string> {
     }
   }
 
-  report += '\nСегодня:\n';
-  report += '- [Укажите задачи на сегодня]\n';
+  report += `\n${headings.planned}:\n`;
+  report += '- [Укажите планы]\n';
 
   return report;
 }

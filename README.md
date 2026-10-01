@@ -64,6 +64,8 @@ All range flags are forwarded to the CLI. Reports synchronize GitLab and Jira fi
 
 At the end of the workday, run `pnpm finish` without dates. It uses today's date in `TIMEZONE`, synchronizes both sources once, creates upload-ready `worklogs.csv` and `worklogs.json`, and writes plus prints `standup.md`. Repeated runs reuse synchronization coverage; use `pnpm finish --force` only when a full refresh is needed.
 
+Stand-up headings always include the exact date and use relative labels such as `Today`, `Tomorrow`, and `Yesterday` when applicable.
+
 Successful provider/date pairs are stored in `sync_coverage` together with a token-free configuration fingerprint. Repeating the same command skips covered dates without calling the provider APIs; uncovered gaps are grouped into the smallest contiguous ranges. Changing instances, projects, authors, or Jira connection settings creates a new scope automatically. Use `--force` only when a date must be fetched again:
 
 ```bash
