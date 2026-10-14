@@ -5,7 +5,7 @@
   "description": "GitLab to Jira Worklog Assistant",
   "private": true,
   "engines": {
-    "node": "\u003e=24.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "pnpm -r build",
@@ -22,7 +22,10 @@
     "get:report": "node apps/cli/dist/index.js finish --only report",
     "get:standup": "node apps/cli/dist/index.js finish --only standup",
     "activity": "node apps/cli/dist/index.js activity",
-    "day": "node apps/cli/dist/index.js day"
+    "day": "node apps/cli/dist/index.js day",
+    "graph": "pnpm build && docker compose up -d --wait mongo && node apps/api/dist/index.js",
+    "graph:demo": "pnpm build && node apps/api/dist/index.js --demo",
+    "graph:dev": "pnpm --filter @worklog-assistant/web start"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -32,5 +35,6 @@
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.71.0",
     "vitest": "^2.1.1"
-  }
+  },
+  "packageManager": "pnpm@11.25.0"
 }

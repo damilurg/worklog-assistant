@@ -10,7 +10,11 @@
   "dependencies": {
     "fastify": "^5.0.0",
     "@worklog-assistant/config": "workspace:*",
-    "@worklog-assistant/db": "workspace:*"
+    "@worklog-assistant/db": "workspace:*",
+    "@worklog-assistant/shared": "workspace:*",
+    "drizzle-orm": "^0.45.3",
+    "@fastify/static": "^8.0.0",
+    "mongodb": "^6.20.0"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

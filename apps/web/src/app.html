@@ -1,0 +1,464 @@
+<div class="shell">
+  <aside class="rail">
+    <a class="brand" href="/" aria-label="DevGraph">d<span>g</span></a
+    ><button class="rail_button active" [attr.aria-label]="t.graph" [attr.title]="t.graph">↔</button
+    ><button
+      class="rail_button"
+      (click)="showSettings.set(!showSettings())"
+      [attr.aria-label]="t.settings"
+      [attr.title]="t.settings"
+    >
+      ⚙
+    </button>
+    <div class="rail_footer">DG<br /><small>0.1</small></div>
+  </aside>
+  <aside class="sidebar">
+    <div class="project_label">{{ t.workspace }} <span>⌄</span></div>
+    <h2>Worklog assistant</h2>
+    <p class="subtle">{{ t.tagline }}</p>
+    <div class="nav_section">{{ t.overview }}</div>
+    <button class="nav_item" [class.current]="view()==='activity'" (click)="view.set('activity')">
+      <span>▥</span> {{ t.activityOverview }}
+    </button>
+    <button
+      class="nav_item"
+      [class.current]="view()==='graph'"
+      (click)="view.set('graph');filter.set('all');focus.set(false)"
+    >
+      <span>↔</span> {{ t.developmentGraph }} <small>{{ graph().nodes.length }}</small>
+    </button>
+    <div class="nav_section">{{ t.nodeTypes }}</div>
+    @for(kind of kinds;track kind){<button
+      class="nav_item"
+      [class.chosen]="filter()===kind"
+      (click)="view.set('graph');filter.set(filter()===kind?'all':kind)"
+    >
+      <i [class]="'dot '+kind"></i>{{ labels[kind] }}<small>{{ count(kind) }}</small></button
+    >}
+    <div class="integration_card">
+      <div class="integration_icon">↔</div>
+      <strong>{{ t.integrationTitle }}</strong>
+      <p>{{ t.integrationDescription }}</p>
+      <div class="source"><span class="source_logo gitlab">◆</span>GitLab <i></i></div>
+      <div class="source"><span class="source_logo jira">▰</span>Jira <i></i></div>
+      <div class="mode_label">{{ graph().mode==='demo'?t.demoData:t.connectedWorkspace }}</div>
+    </div>
+    <div class="sidebar_bottom">
+      <span class="avatar">M</span>
+      <div>{{ t.myWorkspace }}<small>GitLab → Jira</small></div>
+    </div>
+  </aside>
+  <main>
+    <header>
+      <div class="breadcrumb">{{ t.workspace }} <span>/</span> <b>{{ t.developmentGraph }}</b></div>
+      <button class="button" (click)="showSettings.set(!showSettings())">
+        ⚙ {{ t.connections }}
+      </button>
+    </header>
+    <section class="page_heading">
+      <div class="eyebrow"><i></i> {{ t.eyebrow }}</div>
+      <div class="title_row">
+        <div>
+          <h1>{{ t.title }}<span>.</span></h1>
+          <p>{{ t.description }}</p>
+        </div>
+        <button class="button primary" (click)="load(true)" [disabled]="loading()">
+          ↻ {{ loading()?t.syncing:t.sync }}
+        </button>
+      </div>
+    </section>
+    @if(showSettings()){
+    <section class="settings">
+      <div>
+        <strong>{{ t.workspaceConfiguration }}</strong>
+        <p>{{ t.connectionDescription }}</p>
+        <p>{{ graph().mode === 'demo' ? t.demoStorage : t.liveStorage }}</p>
+      </div>
+      <button class="button" (click)="load()" [disabled]="loading()">{{ t.refresh }}</button>
+    </section>
+    } @if(error()){
+    <div class="error" role="alert">
+      {{error()}} @if(graph().mode==='demo'){<span>{{ t.showingDemo }}</span>}
+    </div>
+    }
+    <div class="date_range">
+      <label
+        >{{ t.from }}
+        <input
+          type="date"
+          [value]="from()"
+          (change)="setDate('from',$any($event.target).value)" /></label
+      ><label
+        >{{ t.to }}
+        <input
+          type="date"
+          [value]="to()"
+          (change)="setDate('to',$any($event.target).value)" /></label
+      ><button class="button" (click)="load()" [disabled]="loading()">{{ t.showPeriod }}</button>
+    </div>
+    @if(graph().range;as range){
+    <p class="loaded_range">
+      {{t.loadedRange(range.from,range.to)}} · UTC @if(graph().mode==='demo'){<span>
+        · {{t.demoData}}</span
+      >}
+    </p>
+    } @if(graph().truncated){
+    <div class="error">{{ t.truncated }}</div>
+    }
+    <div class="view_switch">
+      <button [class.active]="view()==='activity'" (click)="view.set('activity')">
+        {{ t.activityOverview }}</button
+      ><button [class.active]="view()==='graph'" (click)="view.set('graph')">
+        {{ t.developmentGraph }}
+      </button>
+    </div>
+    @if(view()==='graph'){
+    <div class="metrics">
+      <div>
+        <span>{{ t.issues }}</span
+        ><strong>{{count('issue')}}<small>{{ t.jiraIssues }}</small></strong>
+      </div>
+      <div>
+        <span>{{ t.mergeRequests }}</span
+        ><strong>{{count('mr')}}<small>{{ t.gitlabChanges }}</small></strong>
+      </div>
+      <div>
+        <span>{{ t.relationships }}</span
+        ><strong>{{graph().edges.length}}<small>{{ t.connectedContext }}</small></strong>
+      </div>
+      <div>
+        <span>{{ t.dataSource }}</span
+        ><strong class="metric_mode"
+          ><i></i>{{graph().mode==='demo'?t.demoWorkspace:t.liveWorkspace}}</strong
+        >
+      </div>
+    </div>
+    } @if(view()==='activity'){ @if(activity();as a){
+    <section class="activity_metrics">
+      <div>
+        <span>{{t.rawEvents}}</span><strong>{{a.totals.events}}</strong
+        ><small>{{t.storedEvents}}</small>
+      </div>
+      <div>
+        <span>{{t.development}}</span><strong>{{a.totals.commits}}</strong
+        ><small>{{t.commitEvents}}</small>
+      </div>
+      <div>
+        <span>{{t.review}}</span><strong>{{a.totals.reviews}}</strong
+        ><small>{{t.reviewEvents}}</small>
+      </div>
+      <div>
+        <span>{{t.integration}}</span><strong>{{a.totals.mergedRequests}}</strong
+        ><small>{{t.mergedAt}}</small>
+      </div>
+      <div>
+        <span>{{t.recordedTime}}</span><strong>{{hours(a.totals.loggedSeconds)}}<em>h</em></strong
+        ><small>{{t.jiraRecorded}}</small>
+      </div>
+    </section>
+    <div class="activity_charts">
+      <section class="activity_panel">
+        <div class="panel_heading">
+          <div>
+            <h2>{{t.dailyActivity}}</h2>
+            <p>{{t.dailyDescription}}</p>
+          </div>
+          <span class="fact_badge">UTC · {{t.sourceFacts}}</span>
+        </div>
+        <div class="daily_chart">
+          @for(day of a.daily;track day.date){<button
+            class="day_column"
+            [class.selected]="inspectDate()===day.date"
+            (click)="setDay(inspectDate()===day.date?'':day.date)"
+            [attr.aria-label]="t.dayLabel(day.date,day.events)"
+            [attr.title]="t.dayLabel(day.date,day.events)"
+          >
+            <span class="bar_value">{{day.events}}</span>
+            <div class="bar_track"><i [style.height.%]="percent(day.events,dailyMax())"></i></div>
+            <span class="bar_label">{{day.date.slice(5)}}</span></button
+          >}
+        </div>
+        @if(!a.daily.length){
+        <p class="activity_empty">{{t.noActivity}}</p>
+        }
+      </section>
+      <section class="activity_panel">
+        <div class="panel_heading">
+          <div>
+            <h2>{{t.hourlyActivity}}</h2>
+            <p>{{t.hourlyDescription}}</p>
+          </div>
+          <span class="fact_badge">UTC</span>
+        </div>
+        <div class="hour_chart">
+          @for(hour of a.hourly;track hour.hour){
+          <div class="hour_column" [attr.title]="t.hourLabel(hour.hour,hour.events)">
+            <div class="bar_track"><i [style.height.%]="percent(hour.events,hourlyMax())"></i></div>
+            <span>{{hour.hour%4===0?hour.hour.toString().padStart(2,'0'):''}}</span>
+          </div>
+          }
+        </div>
+        <p class="chart_note">{{t.hourlyNote}}</p>
+      </section>
+    </div>
+    <section class="activity_panel daily_table">
+      <div class="panel_heading">
+        <div>
+          <h2>{{t.dayBreakdown}}</h2>
+          <p>{{t.loggedByStart}}</p>
+        </div>
+        <button class="button" (click)="setDay('')">{{t.allDays}}</button>
+      </div>
+      <div class="table_scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{{t.date}}</th>
+              <th>{{t.rawEvents}}</th>
+              <th>{{t.development}}</th>
+              <th>{{t.review}}</th>
+              <th>{{t.integration}}</th>
+              <th>{{t.recordedTime}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(day of a.daily;track day.date){
+            <tr [class.highlight_row]="inspectDate()===day.date" (click)="setDay(day.date)">
+              <td>
+                <button class="table_date" (click)="setDay(day.date)">{{day.date}}</button>
+              </td>
+              <td>{{day.events}}</td>
+              <td>{{day.commits}}</td>
+              <td>{{day.reviews}}</td>
+              <td>{{day.mergedRequests}}</td>
+              <td class="recorded_hours">{{hours(day.loggedSeconds)}} h</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="calculation_notes">
+      <div>
+        <strong>{{t.calculationTitle}}</strong>
+        <p>{{t.calculationDescription}}</p>
+      </div>
+      <div class="formula">
+        <code>{{a.totals.loggedSeconds}} seconds / 3600 = {{hours(a.totals.loggedSeconds)}} h</code
+        ><small>{{t.calculationWorklogs(a.totals.worklogRows)}}</small>
+      </div>
+      <p>{{t.deliveryNote}}</p>
+      <p>{{t.rawLimitNote}}</p>
+    </section>
+    <section class="activity_panel audit_panel">
+      <div class="panel_heading">
+        <div>
+          <h2>{{t.sourceRows}} @if(inspectDate()){<span>{{inspectDate()}}</span>}</h2>
+          <p>{{t.sourceRowsDescription}}</p>
+        </div>
+        <button class="button" (click)="exportRaw()">{{t.exportRaw}}</button>
+      </div>
+      <div class="audit_filters">
+        <button [class.active]="sourceType()==='all'" (click)="setSource('all')">
+          {{t.allSources}}</button
+        ><button
+          [class.active]="sourceType()==='activity_events'"
+          (click)="setSource('activity_events')"
+        >
+          GitLab events</button
+        ><button
+          [class.active]="sourceType()==='jira_worklogs'"
+          (click)="setSource('jira_worklogs')"
+        >
+          Jira worklogs</button
+        ><button
+          [class.active]="sourceType()==='gitlab_merge_requests'"
+          (click)="setSource('gitlab_merge_requests')"
+        >
+          Merged MRs</button
+        ><span>{{auditRows().length}} {{t.rows}}</span>
+      </div>
+      <div class="table_scroll audit_scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{{t.timestamp}}</th>
+              <th>{{t.source}}</th>
+              <th>{{t.eventType}}</th>
+              <th>{{t.details}}</th>
+              <th>{{t.rawSeconds}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(row of pageRows();track row.source+':'+row.id){
+            <tr>
+              <td class="timestamp">
+                {{row.timestamp.replace('T',' ').slice(0,19)}}<small>{{row.id}}</small>
+              </td>
+              <td><span class="source_tag">{{row.source}}</span></td>
+              <td>{{row.type}}</td>
+              <td>
+                @if(safeUrl(row.url);as url){<a
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{row.title}} ↗</a
+                >}@else{<span>{{row.title}}</span>}<small>{{row.issueKeys.join(', ')}}</small>
+              </td>
+              <td>{{row.durationSeconds ?? '—'}}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <button
+          class="button"
+          [disabled]="auditPage()===0"
+          (click)="auditPage.update(previousPage)"
+        >
+          {{t.previous}}</button
+        ><span>{{t.pageLabel(auditPage()+1,pageCount())}}</span
+        ><button
+          class="button"
+          [disabled]="auditPage()+1>=pageCount()"
+          (click)="auditPage.update(nextPage)"
+        >
+          {{t.next}}
+        </button>
+      </div>
+      @if(!auditRows().length){
+      <p class="activity_empty">{{t.noSourceRows}}</p>
+      }
+    </section>
+    }@else{
+    <div class="activity_panel"><p>{{t.noActivity}}</p></div>
+    } }@else{
+    <section class="graph_card">
+      <div class="graph_toolbar">
+        <div class="tabs">
+          <button class="tab active">{{ t.graphTab }}</button
+          ><span class="node_count"
+            >{{ t.nodeCount(visible().nodes.length, visible().edges.length) }}</span
+          >
+        </div>
+        <label class="search"
+          ><span>⌕</span
+          ><input
+            [attr.aria-label]="t.search"
+            [placeholder]="t.searchPlaceholder"
+            [value]="query()"
+            (input)="query.set($any($event.target).value)"
+        /></label>
+      </div>
+      <div class="graph_layout">
+        <div class="graph_view">
+          <div class="graph_top">
+            <span class="demo_badge">{{graph().mode==='demo'?t.demo:t.live}}</span
+            ><button class="focus_button" [class.enabled]="focus()" (click)="focus.set(!focus())">
+              ◎ {{focus()?t.focusOn:t.focusOff}}</button
+            >@if(focus()){<button class="focus_button" (click)="depth.set(depth()===1?2:1)">
+              {{ t.depth(depth()) }}</button
+            >}
+          </div>
+          <svg
+            viewBox="0 0 1180 670"
+            class="network"
+            [attr.aria-label]="t.graphDescription"
+            role="group"
+          >
+            <defs>
+              <filter id="glow"><feGaussianBlur stdDeviation="5" /></filter>
+            </defs>
+            <g
+              [attr.transform]="'translate('+(590*(1-zoom()))+','+(335*(1-zoom()))+') scale('+zoom()+')'"
+            >
+              @for(e of visible().edges;track e.id){
+              <path
+                [attr.d]="line(e.from,e.to)"
+                class="edge"
+                [class.highlight]="e.from===selected()||e.to===selected()"
+              />
+              }@for(n of visible().nodes;track n.id){
+              <g
+                class="graph_node"
+                [class.selected]="n.id===selected()"
+                [class.dim]="!connected(n.id)"
+                [attr.transform]="'translate('+position(n.id).x+','+position(n.id).y+')'"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="n.label+': '+n.title"
+                (click)="select(n)"
+                (keydown.enter)="select(n)"
+                (keydown.space)="$event.preventDefault();select(n)"
+              >
+                <title>{{n.title}}</title>
+                @if(n.id===selected()){
+                <circle r="39" class="selection_halo" />
+                }
+                <circle r="26" [attr.class]="'node_circle '+n.kind" />
+                <text y="6" class="node_icon">{{icons[n.kind]}}</text>
+                <text y="51" class="node_label">{{n.label}}</text>
+              </g>
+              }
+            </g>
+          </svg>
+          @if(!visible().nodes.length){
+          <div class="empty">{{ t.empty }}</div>
+          }
+          <div class="graph_bottom">
+            <div class="legend">
+              @for(kind of kinds;track kind){<span
+                ><i [class]="'dot '+kind"></i>{{labels[kind]}}</span
+              >}
+            </div>
+            <div class="zoom">
+              <button [attr.aria-label]="t.zoomOut" (click)="changeZoom(-.15)">−</button
+              ><button (click)="zoom.set(1)" [attr.aria-label]="t.resetZoom">
+                {{ (zoom()*100).toFixed(0) }}%</button
+              ><button [attr.aria-label]="t.zoomIn" (click)="changeZoom(.15)">+</button>
+            </div>
+          </div>
+        </div>
+        <aside class="details">
+          @if(active();as n){
+          <div class="detail_heading">
+            <span class="detail_kind"><i [class]="'dot '+n.kind"></i>{{labels[n.kind]}}</span
+            ><span>↗</span>
+          </div>
+          <h2>{{n.label}}</h2>
+          <h3>{{n.title}}</h3>
+          @if(n.status){<span class="status"><i></i>{{n.status}}</span>}
+          <div class="detail_rule"></div>
+          <div class="detail_caption">{{ t.relatedObjects }} <span>{{related().length}}</span></div>
+          <div class="related_list">
+            @for(item of related();track item.id){<button
+              class="related_item"
+              (click)="select(item)"
+            >
+              <span [class]="'related_icon '+item.kind">{{icons[item.kind]}}</span
+              ><span><b>{{item.label}}</b><small>{{item.title}}</small></span
+              ><em>›</em></button
+            >}
+          </div>
+          @if(safeUrl(n.url);as url){<a
+            class="open_source"
+            [href]="url"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ t.openSource }} ↗</a
+          >}@else{
+          <div class="detail_note">{{graph().mode==='demo'?t.demoSourceNote:t.noSourceNote}}</div>
+          }}@else{
+          <p class="detail_note">{{ t.selectNode }}</p>
+          }
+        </aside>
+      </div>
+    </section>
+    }
+    <footer>
+      <span><i></i>{{graph().mode==='demo'?t.demoFooter:t.liveFooter}}</span
+      ><span>{{ t.footer }}</span>
+    </footer>
+  </main>
+</div>

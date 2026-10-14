@@ -1,19 +1,23 @@
-import Fastify from 'fastify';
-
-const fastify = Fastify({ logger: true });
-
-fastify.get('/health', async () => {
-  return { status: 'ok', time: new Date().toISOString() };
-});
-
+import { config } from '@worklog-assistant/config';
+import { createServer } from './server';
+void config;
+const demo = process.argv.includes('--demo');
+const fastify = createServer({ demo });
 const start = async () => {
   try {
-    await fastify.listen({ port: 3000, host: '0.0.0.0' });
-    fastify.log.info(`Server listening on port 3000`);
+    const host = process.env.GRAPH_HOST ?? '127.0.0.1';
+    const port = Number(process.env.PORT ?? 3000);
+    await fastify.listen({ port, host });
+    console.log(`Development graph: http://localhost:${port}${demo ? ' (demo)' : ''}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
 };
-
+process.on('SIGINT', () => {
+  void fastify.close().then(() => process.exit(0));
+});
+process.on('SIGTERM', () => {
+  void fastify.close().then(() => process.exit(0));
+});
 start();

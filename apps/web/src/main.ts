@@ -1,0 +1,217 @@
+import { bootstrapApplication } from '@angular/platform-browser';
+import { Component, computed, signal, LOCALE_ID } from '@angular/core';
+import { Graph, GraphNode, NodeKind, neighborhood } from '../../../packages/shared/src/graph';
+import { en } from './i18n/en';
+@Component({ selector: 'app-root', standalone: true, templateUrl: './app.html' })
+class App {
+  graph = signal<Graph>({ mode: 'live', nodes: [], edges: [] });
+  selected = signal('issue:DEV-142');
+  query = signal('');
+  filter = signal<string>('all');
+  focus = signal(false);
+  depth = signal(1);
+  zoom = signal(1);
+  loading = signal(false);
+  error = signal('');
+  showSettings = signal(false);
+  view = signal<'activity' | 'graph'>('activity');
+  inspectDate = signal('');
+  sourceType = signal('all');
+  auditPage = signal(0);
+  readonly pageSize = 20;
+  previousPage = (page: number) => Math.max(0, page - 1);
+  nextPage = (page: number) => Math.min(this.pageCount() - 1, page + 1);
+  private requestId = 0;
+  pageRows = computed(() =>
+    this.auditRows().slice(
+      this.auditPage() * this.pageSize,
+      (this.auditPage() + 1) * this.pageSize,
+    ),
+  );
+  pageCount = computed(() => Math.max(1, Math.ceil(this.auditRows().length / this.pageSize)));
+  setDate(which: 'from' | 'to', value: string) {
+    this[which].set(value);
+    if (this.from() && this.to() && this.from() <= this.to()) void this.load();
+    else {
+      this.error.set(this.t.invalidRange);
+      this.graph.set({ mode: this.graph().mode, nodes: [], edges: [] });
+    }
+  }
+  setDay(date: string) {
+    this.inspectDate.set(date);
+    this.auditPage.set(0);
+  }
+  setSource(source: string) {
+    this.sourceType.set(source);
+    this.auditPage.set(0);
+  }
+  activity = computed(() => this.graph().activity);
+  auditRows = computed(() =>
+    (this.activity()?.rows ?? []).filter(
+      (row) =>
+        (!this.inspectDate() || row.timestamp.startsWith(this.inspectDate())) &&
+        (this.sourceType() === 'all' || row.source === this.sourceType()),
+    ),
+  );
+  dailyMax = computed(() => Math.max(1, ...(this.activity()?.daily.map((d) => d.events) ?? [])));
+  hourlyMax = computed(() => Math.max(1, ...(this.activity()?.hourly.map((h) => h.events) ?? [])));
+  hours(seconds: number) {
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(seconds / 3600);
+  }
+  percent(value: number, max: number) {
+    return value === 0 ? 0 : Math.max(2, (value / max) * 100);
+  }
+  exportRaw() {
+    const rows = this.auditRows();
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            timezone: 'UTC',
+            from: this.graph().range?.from ?? this.from(),
+            to: this.graph().range?.to ?? this.to(),
+            truncated: !!this.graph().truncated,
+            filters: { date: this.inspectDate() || null, source: this.sourceType() },
+            recordedSeconds: rows
+              .filter((r) => r.source === 'jira_worklogs')
+              .reduce((sum, r) => sum + (r.durationSeconds ?? 0), 0),
+            rows,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: 'application/json' },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `activity-${this.from()}-${this.to()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  kinds: NodeKind[] = ['issue', 'mr', 'commit', 'person', 'repository', 'worklog'];
+  readonly t = en;
+  readonly labels: Record<string, string> = en.nodeKinds;
+  icons: Record<string, string> = {
+    issue: '◇',
+    mr: '↔',
+    commit: '●',
+    person: '◉',
+    repository: '▱',
+    worklog: '◷',
+  };
+  active = computed(() => this.graph().nodes.find((n) => n.id === this.selected()));
+  related = computed(() => {
+    const g = neighborhood(this.graph(), this.selected());
+    return g.nodes.filter((n) => n.id !== this.selected());
+  });
+  matches = computed(() =>
+    this.graph().nodes.filter(
+      (n) =>
+        (this.filter() === 'all' || n.kind === this.filter()) &&
+        `${n.label} ${n.title}`.toLowerCase().includes(this.query().toLowerCase()),
+    ),
+  );
+  visible = computed(() => {
+    const g = this.focus()
+      ? neighborhood(this.graph(), this.selected(), this.depth())
+      : this.graph();
+    const matches = new Set(this.matches().map((n) => n.id));
+    const ns = g.nodes.filter((n) => matches.has(n.id));
+    const ids = new Set(ns.map((n) => n.id));
+    return { ...g, nodes: ns, edges: g.edges.filter((e) => ids.has(e.from) && ids.has(e.to)) };
+  });
+  positions = computed(() => {
+    const groups: Record<string, GraphNode[]> = {};
+    for (const n of this.visible().nodes) (groups[n.kind] ??= []).push(n);
+    const xs: Record<string, number> = {
+      repository: 100,
+      person: 275,
+      mr: 450,
+      commit: 650,
+      issue: 850,
+      worklog: 1050,
+    };
+    const pos = new Map<string, { x: number; y: number }>();
+    for (const [kind, ns] of Object.entries(groups))
+      ns.forEach((n, i) =>
+        pos.set(n.id, {
+          x: xs[kind],
+          y: ns.length === 1 ? 330 : 110 + i * (440 / Math.max(1, ns.length - 1)),
+        }),
+      );
+    return pos;
+  });
+  position(id: string) {
+    return this.positions().get(id) ?? { x: 0, y: 0 };
+  }
+  line(from: string, to: string) {
+    const a = this.position(from),
+      b = this.position(to);
+    return `M ${a.x} ${a.y} C ${(a.x + b.x) / 2} ${a.y}, ${(a.x + b.x) / 2} ${b.y}, ${b.x} ${b.y}`;
+  }
+  connected(id: string) {
+    return id === this.selected() || this.related().some((n) => n.id === id);
+  }
+  count(kind: string) {
+    return this.graph().nodes.filter((n) => n.kind === kind).length;
+  }
+  select(n: GraphNode) {
+    this.selected.set(n.id);
+  }
+  safeUrl(url?: string) {
+    try {
+      const u = new URL(url ?? '');
+      return u.protocol === 'https:' ? u.href : null;
+    } catch {
+      return null;
+    }
+  }
+  changeZoom(amount: number) {
+    this.zoom.update((z) => Math.min(1.8, Math.max(0.55, z + amount)));
+  }
+  from = signal(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+  to = signal(new Date().toISOString().slice(0, 10));
+  async load(sync = false) {
+    const requestId = ++this.requestId;
+    const from = this.from(),
+      to = this.to();
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      const res = await fetch(
+        `/api/${sync ? 'sync' : 'graph'}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        {
+          method: sync ? 'POST' : 'GET',
+        },
+      );
+      if (!res.ok) {
+        const failure = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(
+          typeof failure?.error === 'string' ? failure.error : this.t.apiUnavailable(res.status),
+        );
+      }
+      const g = (await res.json()) as Graph;
+      if (requestId !== this.requestId) return;
+      this.graph.set(g);
+      this.inspectDate.set('');
+      this.sourceType.set('all');
+      this.auditPage.set(0);
+      this.focus.set(true);
+      if (!g.nodes.some((n) => n.id === this.selected())) this.selected.set(g.nodes[0]?.id ?? '');
+    } catch (e) {
+      if (requestId !== this.requestId) return;
+      this.graph.set({ mode: 'live', nodes: [], edges: [] });
+      this.error.set(e instanceof Error ? e.message : this.t.connectionError);
+    } finally {
+      if (requestId === this.requestId) this.loading.set(false);
+    }
+  }
+  constructor() {
+    void this.load();
+  }
+}
+bootstrapApplication(App, { providers: [{ provide: LOCALE_ID, useValue: en.locale }] }).catch(
+  console.error,
+);

@@ -15,25 +15,43 @@ services:
       timeout: 5s
       retries: 5
 
+  mongo:
+    image: mongo:8
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand({ ping: 1 })']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build: .
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-worklogs}
-      - GITLAB_URL=${GITLAB_URL}
-      - GITLAB_TOKEN=${GITLAB_TOKEN}
+      - GRAPH_HOST=0.0.0.0
+      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-worklog_graph}
+      - GITLAB_INSTANCES=${GITLAB_INSTANCES}
       - GITLAB_AUTHOR_EMAILS=${GITLAB_AUTHOR_EMAILS}
       - GITLAB_AUTHOR_NAMES=${GITLAB_AUTHOR_NAMES}
-      - GITLAB_PROJECT_IDS=${GITLAB_PROJECT_IDS}
       - JIRA_URL=${JIRA_URL}
       - JIRA_EMAIL=${JIRA_EMAIL}
       - JIRA_TOKEN=${JIRA_TOKEN}
+      - JIRA_AUTH_MODE=${JIRA_AUTH_MODE:-cloud}
       - WORKDAY_HOURS=${WORKDAY_HOURS:-8}
       - TIMEZONE=${TIMEZONE:-Asia/Bishkek}
     depends_on:
+      mongo:
+        condition: service_healthy
       postgres:
         condition: service_healthy
 
 volumes:
+  mongo_data:
   postgres_data:
+
