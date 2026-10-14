@@ -1,0 +1,248 @@
+<div class="shell">
+  <aside class="rail">
+    <a class="brand" href="/" aria-label="DevGraph">d<span>g</span></a
+    ><button class="rail_button active" aria-label="Граф" title="Граф">↔</button
+    ><button
+      class="rail_button"
+      (click)="showSettings.set(!showSettings())"
+      aria-label="Настройки"
+      title="Настройки"
+    >
+      ⚙
+    </button>
+    <div class="rail_footer">DG<br /><small>0.1</small></div>
+  </aside>
+  <aside class="sidebar">
+    <div class="project_label">WORKSPACE <span>⌄</span></div>
+    <h2>Worklog assistant</h2>
+    <p class="subtle">Development, connected.</p>
+    <div class="nav_section">ОБЗОР</div>
+    <button class="nav_item current" (click)="filter.set('all');focus.set(false)">
+      <span>↔</span> Граф разработки <small>{{ graph().nodes.length }}</small>
+    </button>
+    <div class="nav_section">ТИПЫ ОБЪЕКТОВ</div>
+    @for(kind of kinds;track kind){<button
+      class="nav_item"
+      [class.chosen]="filter()===kind"
+      (click)="filter.set(filter()===kind?'all':kind)"
+    >
+      <i [class]="'dot '+kind"></i>{{ labels[kind] }}<small>{{ count(kind) }}</small></button
+    >}
+    <div class="integration_card">
+      <div class="integration_icon">↔</div>
+      <strong>Two sources. One story.</strong>
+      <p>Задачи и код в одном графе.</p>
+      <div class="source"><span class="source_logo gitlab">◆</span>GitLab <i></i></div>
+      <div class="source"><span class="source_logo jira">▰</span>Jira <i></i></div>
+      <div class="mode_label">
+        {{ graph().mode==='demo'?'Демонстрационные данные':'PostgreSQL' }}
+      </div>
+    </div>
+    <div class="sidebar_bottom">
+      <span class="avatar">M</span>
+      <div>My workspace<small>GitLab → Jira</small></div>
+    </div>
+  </aside>
+  <main>
+    <header>
+      <div class="breadcrumb">Workspace <span>/</span> <b>Development graph</b></div>
+      <button class="button" (click)="showSettings.set(!showSettings())">⚙ Подключения</button>
+    </header>
+    <section class="page_heading">
+      <div class="eyebrow"><i></i> YOUR WORK, CONNECTED</div>
+      <div class="title_row">
+        <div>
+          <h1>Всё связано<span>.</span></h1>
+          <p>Задачи, коммиты и worklogs. Твоя активность в одном графе.</p>
+        </div>
+        <button class="button primary" (click)="load(true)" [disabled]="loading()">
+          ↻ {{ loading()?'Синхронизация…':'Синхронизировать' }}
+        </button>
+      </div>
+    </section>
+    @if(showSettings()){
+    <section class="settings">
+      <div>
+        <strong>Подключение к API</strong>
+        <p>
+          Используются существующие настройки .env и база PostgreSQL. Ключ хранится только в памяти
+          этой страницы.
+        </p>
+      </div>
+      <label
+        >API key
+        <input
+          type="password"
+          autocomplete="off"
+          [value]="apiKey()"
+          (input)="apiKey.set($any($event.target).value)"
+          placeholder="Для live-режима" /></label
+      ><button class="button" (click)="load()">Подключиться</button>
+    </section>
+    } @if(error()){
+    <div class="error" role="alert">
+      {{error()}} @if(graph().mode==='demo'){<span>Показан демограф.</span>}
+    </div>
+    }
+    <div class="date_range">
+      <label
+        >С
+        <input type="date" [value]="from()" (change)="from.set($any($event.target).value)" /></label
+      ><label
+        >По <input type="date" [value]="to()" (change)="to.set($any($event.target).value)" /></label
+      ><button class="button" (click)="load()" [disabled]="loading()">Показать период</button>
+    </div>
+    @if(graph().truncated){
+    <div class="error">
+      Показан ограниченный срез активности. Сузь период, чтобы увидеть все связи.
+    </div>
+    }
+    <div class="metrics">
+      <div>
+        <span>ЗАДАЧИ</span><strong>{{count('issue')}}<small>Jira issues</small></strong>
+      </div>
+      <div>
+        <span>MERGE REQUESTS</span><strong>{{count('mr')}}<small>GitLab changes</small></strong>
+      </div>
+      <div>
+        <span>СВЯЗИ</span><strong>{{graph().edges.length}}<small>Connected context</small></strong>
+      </div>
+      <div>
+        <span>ИСТОЧНИК ДАННЫХ</span
+        ><strong class="metric_mode"
+          ><i></i>{{graph().mode==='demo'?'Demo workspace':'Live workspace'}}</strong
+        >
+      </div>
+    </div>
+    <section class="graph_card">
+      <div class="graph_toolbar">
+        <div class="tabs">
+          <button class="tab active">Граф связей</button
+          ><span class="node_count"
+            >{{visible().nodes.length}} nodes · {{visible().edges.length}} edges</span
+          >
+        </div>
+        <label class="search"
+          ><span>⌕</span
+          ><input
+            aria-label="Поиск узлов"
+            placeholder="Задача, MR, человек…"
+            [value]="query()"
+            (input)="query.set($any($event.target).value)"
+        /></label>
+      </div>
+      <div class="graph_layout">
+        <div class="graph_view">
+          <div class="graph_top">
+            <span class="demo_badge">{{graph().mode==='demo'?'DEMO':'LIVE'}}</span
+            ><button class="focus_button" [class.enabled]="focus()" (click)="focus.set(!focus())">
+              ◎ {{focus()?'Фокус включён':'Фокус на узле'}}</button
+            >@if(focus()){<button class="focus_button" (click)="depth.set(depth()===1?2:1)">
+              {{depth()}} уровень</button
+            >}
+          </div>
+          <svg
+            viewBox="0 0 1180 670"
+            class="network"
+            aria-label="Интерактивный граф разработки"
+            role="group"
+          >
+            <defs>
+              <filter id="glow"><feGaussianBlur stdDeviation="5" /></filter>
+            </defs>
+            <g
+              [attr.transform]="'translate('+(590*(1-zoom()))+','+(335*(1-zoom()))+') scale('+zoom()+')'"
+            >
+              @for(e of visible().edges;track e.id){
+              <path
+                [attr.d]="line(e.from,e.to)"
+                class="edge"
+                [class.highlight]="e.from===selected()||e.to===selected()"
+              />
+              }@for(n of visible().nodes;track n.id){
+              <g
+                class="graph_node"
+                [class.selected]="n.id===selected()"
+                [class.dim]="!connected(n.id)"
+                [attr.transform]="'translate('+position(n.id).x+','+position(n.id).y+')'"
+                tabindex="0"
+                role="button"
+                [attr.aria-label]="n.label+': '+n.title"
+                (click)="select(n)"
+                (keydown.enter)="select(n)"
+                (keydown.space)="$event.preventDefault();select(n)"
+              >
+                <title>{{n.title}}</title>
+                @if(n.id===selected()){
+                <circle r="39" class="selection_halo" />
+                }
+                <circle r="26" [attr.class]="'node_circle '+n.kind" />
+                <text y="6" class="node_icon">{{icons[n.kind]}}</text>
+                <text y="51" class="node_label">{{n.label}}</text>
+              </g>
+              }
+            </g>
+          </svg>
+          @if(!visible().nodes.length){
+          <div class="empty">Ничего не найдено. Измени поиск или фильтр.</div>
+          }
+          <div class="graph_bottom">
+            <div class="legend">
+              @for(kind of kinds;track kind){<span
+                ><i [class]="'dot '+kind"></i>{{labels[kind]}}</span
+              >}
+            </div>
+            <div class="zoom">
+              <button aria-label="Уменьшить" (click)="changeZoom(-.15)">−</button
+              ><button (click)="zoom.set(1)" aria-label="Сбросить масштаб">
+                {{ (zoom()*100).toFixed(0) }}%</button
+              ><button aria-label="Увеличить" (click)="changeZoom(.15)">+</button>
+            </div>
+          </div>
+        </div>
+        <aside class="details">
+          @if(active();as n){
+          <div class="detail_heading">
+            <span class="detail_kind"><i [class]="'dot '+n.kind"></i>{{labels[n.kind]}}</span
+            ><span>↗</span>
+          </div>
+          <h2>{{n.label}}</h2>
+          <h3>{{n.title}}</h3>
+          @if(n.status){<span class="status"><i></i>{{n.status}}</span>}
+          <div class="detail_rule"></div>
+          <div class="detail_caption">СВЯЗАННЫЕ ОБЪЕКТЫ <span>{{related().length}}</span></div>
+          <div class="related_list">
+            @for(item of related();track item.id){<button
+              class="related_item"
+              (click)="select(item)"
+            >
+              <span [class]="'related_icon '+item.kind">{{icons[item.kind]}}</span
+              ><span><b>{{item.label}}</b><small>{{item.title}}</small></span
+              ><em>›</em></button
+            >}
+          </div>
+          @if(safeUrl(n.url);as url){<a
+            class="open_source"
+            [href]="url"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Открыть в источнике ↗</a
+          >}@else{
+          <div class="detail_note">
+            {{graph().mode==='demo'?'Демоданные: ссылки появятся после подключения источников.':'У
+            этого объекта нет ссылки на источник.'}}
+          </div>
+          }}@else{
+          <p class="detail_note">Выбери узел, чтобы увидеть связи.</p>
+          }
+        </aside>
+      </div>
+    </section>
+    <footer>
+      <span
+        ><i></i>{{graph().mode==='demo'?'Demo mode · демонстрационные данные':'GitLab + Jira ·
+        PostgreSQL'}}</span
+      ><span>Built to see the whole story.</span>
+    </footer>
+  </main>
+</div>
