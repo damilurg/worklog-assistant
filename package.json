@@ -23,7 +23,7 @@
     "get:standup": "node apps/cli/dist/index.js finish --only standup",
     "activity": "node apps/cli/dist/index.js activity",
     "day": "node apps/cli/dist/index.js day",
-    "graph": "pnpm build && node apps/api/dist/index.js",
+    "graph": "pnpm build && docker compose up -d --wait mongo && node apps/api/dist/index.js",
     "graph:demo": "pnpm build && node apps/api/dist/index.js --demo",
     "graph:dev": "pnpm --filter @worklog-assistant/web start"
   },

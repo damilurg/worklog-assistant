@@ -11,6 +11,7 @@ import { and, gte, lte, inArray, desc } from 'drizzle-orm';
 import { config } from '@worklog-assistant/config';
 import { extractJiraKeys } from '@worklog-assistant/shared';
 import { buildGraph } from './graph-builder';
+import { buildActivity } from './activity-summary';
 export interface Range {
   from: string;
   to: string;
@@ -65,6 +66,12 @@ export async function readGraph(range: Range) {
         .where(and(gte(jiraWorklogs.startedAt, from), lte(jiraWorklogs.startedAt, to)))
         .orderBy(desc(jiraWorklogs.startedAt))
         .limit(cap);
+      const merges = await tx
+        .select()
+        .from(gitlabMergeRequests)
+        .where(and(gte(gitlabMergeRequests.mergedAt, from), lte(gitlabMergeRequests.mergedAt, to)))
+        .orderBy(desc(gitlabMergeRequests.mergedAt))
+        .limit(cap);
       const trimmed = {
         activities: activities.slice(0, range.limit),
         commits: commits.slice(0, range.limit),
@@ -96,7 +103,13 @@ export async function readGraph(range: Range) {
         : [];
       return {
         ...buildGraph({ ...trimmed, issues, projects, jiraUrl: config.JIRA_URL }),
-        truncated: [activities, commits, mergeRequests, worklogs].some(
+        range,
+        activity: buildActivity({
+          activities: trimmed.activities,
+          worklogs: trimmed.worklogs,
+          merges: merges.slice(0, range.limit),
+        }),
+        truncated: [activities, commits, mergeRequests, worklogs, merges].some(
           (rows) => rows.length > range.limit,
         ),
       };

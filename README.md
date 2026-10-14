@@ -143,7 +143,7 @@ pnpm build
 
 ## Development graph
 
-Run `pnpm graph` after the usual project setup, then open http://localhost:3000. The command builds the workspace and starts the existing API with an Angular UI. It uses the existing PostgreSQL database, GitLab/Jira clients, and `.env`; no new database or schema migration is required.
+Run `pnpm graph` after the usual project setup, then open http://localhost:3000. The command builds the workspace, starts MongoDB through Docker Compose, waits for it to become healthy, and starts the existing API with an Angular UI. It uses the existing PostgreSQL database, GitLab/Jira clients, and `.env`; MongoDB stores the graph projection; existing CLI records stay in PostgreSQL. No PostgreSQL schema migration is required.
 
 ```bash
 pnpm graph        # Existing workspace data
@@ -154,10 +154,18 @@ Choose a date range and click **Apply dates** to read stored data, or **Sync wor
 
 The graph includes projects, commits, merge requests, Jira issues, authors, and worklogs. Connections use stored `detectedIssueKeys`, commit messages, MR descriptions, and branch names. Commit-to-MR membership is omitted because it is not stored. GitLab commit authors and Jira worklog authors have separate identities. The graph reflects the activity imported by the existing CLI, rather than every item in GitLab.
 
-`GET /api/graph?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=100` and `POST /api/sync` accept the same query parameters. Dates use UTC, matching explicit CLI `--from/--to` ranges. The default is the last 30 UTC calendar dates with up to 100 records per source; the maximum limit is 500. The UI warns when results are truncated. Database reads use a read-only repeatable-read transaction.
+`GET /api/graph?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=100` and `POST /api/sync` accept the same query parameters. Dates use UTC, matching explicit CLI `--from/--to` ranges. The default is the last 30 UTC calendar dates with up to 100 records per source; the maximum limit is 500. The UI warns when results are truncated. CLI source data is read in a read-only repeatable-read PostgreSQL transaction. Each graph request materializes that data in MongoDB and returns the stored MongoDB graph, so running the CLI separately is reflected on the next refresh. MongoDB `graph_snapshots` stores one atomic document per date range and limit; a failed source read does not overwrite the previous snapshot. Snapshots contain graph data only, never tokens. This bounded MVP uses MongoDB’s 16 MiB document limit. Large-workspace node/edge collections are a future improvement.
 
-The API binds to localhost by default. Set `GRAPH_API_KEY` to require the `x-api-key` header. Enter this key in **Connections**; it stays in memory and clears when the page refreshes. Docker requires this key and exposes the port only on loopback. Public hosting requires user authentication and TLS. GitLab/Jira tokens are never returned to the browser.
+The API binds to localhost by default. No browser API key or credential entry is required: sync reuses the existing GitLab/Jira environment settings. Requests with non-localhost hosts and cross-origin browser requests are rejected; Docker publishes the API only on loopback. This is a local single-user application. GitLab/Jira tokens are never returned to the browser.
 
 The UI supports English only, with copy centralized in `apps/web/src/i18n/en.ts`. Document language is `en`, and Angular uses the `en-US` locale. Content imported from GitLab and Jira retains its original language.
 
+MongoDB defaults to `mongodb://127.0.0.1:27017`, database `worklog_graph`; override `MONGODB_URI` and `MONGODB_DATABASE` in `.env` when needed. If using an existing remote MongoDB, build and start the API directly with `pnpm build && node apps/api/dist/index.js` to skip the local Docker startup. MongoDB persistence and local startup are covered by mocked adapter/API tests; Docker and live MongoDB still need validation on your machine.
+
 For Angular development, run `pnpm graph:dev` on port 4200 with a proxy to the API on port 3000. Validate with `pnpm test`, `pnpm lint`, and `pnpm build`. The UI is in `apps/web`, graph projection/API in `apps/api`, and the shared graph contract in `packages/shared/src/graph.ts`.
+
+### Source activity and calculation ledger
+
+Activity overview shows daily/hourly GitLab event counts, commit events, review events, actual MR merges by `merged_at`, and recorded Jira worklog time. Totals use only the bounded source rows displayed in the ledger. No planner allocation, `worklog_entries`, eight-hour normalization, estimated durations, or automatic deduplication enters these totals. Recorded hours equal the sum of imported `jira_worklogs.duration_seconds / 3600`; they do not verify the importer or prove hours worked. Hourly bars count event timestamps, not work duration. Worklog duration is assigned to its UTC start date, and only dates with source records are shown. Merged MRs indicate integration, not delivery; deployment reporting requires real deployment records.
+
+Click a day or choose a source table to inspect row IDs, timestamps, issue keys, and raw seconds. **Export source JSON** exports the filtered rows with range, timezone, and truncation metadata. These exported rows are the displayed calculation inputs; this export does not use the CLI's planner or report allocator. Demo activity is marked sample data and is independent of live records.

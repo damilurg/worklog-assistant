@@ -14,8 +14,55 @@ class App {
   zoom = signal(1);
   loading = signal(false);
   error = signal('');
-  apiKey = signal('');
   showSettings = signal(false);
+  view = signal<'activity' | 'graph'>('activity');
+  inspectDate = signal('');
+  sourceType = signal('all');
+  activity = computed(() => this.graph().activity);
+  auditRows = computed(() =>
+    (this.activity()?.rows ?? []).filter(
+      (row) =>
+        (!this.inspectDate() || row.timestamp.startsWith(this.inspectDate())) &&
+        (this.sourceType() === 'all' || row.source === this.sourceType()),
+    ),
+  );
+  dailyMax = computed(() => Math.max(1, ...(this.activity()?.daily.map((d) => d.events) ?? [])));
+  hourlyMax = computed(() => Math.max(1, ...(this.activity()?.hourly.map((h) => h.events) ?? [])));
+  hours(seconds: number) {
+    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(seconds / 3600);
+  }
+  percent(value: number, max: number) {
+    return value === 0 ? 0 : Math.max(2, (value / max) * 100);
+  }
+  exportRaw() {
+    const rows = this.auditRows();
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            timezone: 'UTC',
+            from: this.graph().range?.from ?? this.from(),
+            to: this.graph().range?.to ?? this.to(),
+            truncated: !!this.graph().truncated,
+            filters: { date: this.inspectDate() || null, source: this.sourceType() },
+            recordedSeconds: rows
+              .filter((r) => r.source === 'jira_worklogs')
+              .reduce((sum, r) => sum + (r.durationSeconds ?? 0), 0),
+            rows,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: 'application/json' },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `activity-${this.from()}-${this.to()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   kinds: NodeKind[] = ['issue', 'mr', 'commit', 'person', 'repository', 'worklog'];
   readonly t = en;
   readonly labels: Record<string, string> = en.nodeKinds;
@@ -107,13 +154,14 @@ class App {
         `/api/${sync ? 'sync' : 'graph'}?from=${encodeURIComponent(this.from())}&to=${encodeURIComponent(this.to())}`,
         {
           method: sync ? 'POST' : 'GET',
-          headers: this.apiKey() ? { 'x-api-key': this.apiKey() } : {},
         },
       );
-      if (!res.ok)
+      if (!res.ok) {
+        const failure = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(
-          res.status === 401 ? this.t.apiKeyRequired : this.t.apiUnavailable(res.status),
+          typeof failure?.error === 'string' ? failure.error : this.t.apiUnavailable(res.status),
         );
+      }
       const g = (await res.json()) as Graph;
       this.graph.set(g);
       if (g.mode === 'live') this.focus.set(true);

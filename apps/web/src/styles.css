@@ -937,3 +937,355 @@ footer span:first-child {
 .detail_caption {
   text-transform: uppercase;
 }
+
+.view_switch {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 20px;
+  padding: 4px;
+  background: #111720;
+  border: 1px solid #293240;
+  border-radius: 8px;
+  width: fit-content;
+}
+.view_switch button,
+.audit_filters button {
+  border: 0;
+  background: none;
+  color: #8c9bb2;
+  padding: 9px 15px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.view_switch button.active,
+.audit_filters button.active {
+  background: #26372d;
+  color: #b6f6c6;
+}
+.activity_metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.activity_metrics > div {
+  padding: 19px;
+  border: 1px solid #293240;
+  border-radius: 9px;
+  background: #121923;
+}
+.activity_metrics span {
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8b9ab0;
+}
+.activity_metrics strong {
+  display: block;
+  font-size: 29px;
+  font-weight: 500;
+  margin: 12px 0 7px;
+  color: #c3f4ce;
+}
+.activity_metrics em {
+  font-size: 16px;
+  font-style: normal;
+  margin-left: 4px;
+  color: #8193aa;
+}
+.activity_metrics small {
+  font-size: 9px;
+  color: #7789a0;
+}
+.activity_charts {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.activity_panel {
+  background: #111720;
+  border: 1px solid #293240;
+  border-radius: 9px;
+  padding: 22px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+.activity_charts .activity_panel {
+  margin-bottom: 0;
+}
+.panel_heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+.panel_heading h2 {
+  font-size: 14px;
+  font-weight: 550;
+  margin: 0 0 8px;
+}
+.panel_heading h2 span {
+  font-size: 11px;
+  color: #b6f6c6;
+}
+.panel_heading p,
+.chart_note {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #7f90a7;
+  margin: 0;
+}
+.fact_badge {
+  font-size: 8px;
+  color: #a3b9a7;
+  border: 1px solid #314238;
+  border-radius: 4px;
+  padding: 5px 7px;
+  white-space: nowrap;
+}
+.daily_chart {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  min-height: 215px;
+  align-items: flex-end;
+  padding: 10px 0;
+}
+.day_column {
+  border: 0;
+  background: none;
+  min-width: 28px;
+  flex: 1;
+  color: #99a9be;
+  padding: 0;
+}
+.bar_value {
+  font-size: 10px;
+  display: block;
+  margin-bottom: 8px;
+}
+.bar_track {
+  height: 150px;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid #344252;
+  background: repeating-linear-gradient(to top, transparent 0, transparent 49px, #27303e55 50px);
+}
+.bar_track i {
+  display: block;
+  flex: 1;
+  background: linear-gradient(0deg, #527c60, #b6f6c6);
+  border-radius: 4px 4px 0 0;
+  margin: 0 4px;
+  transition: height 0.2s;
+}
+.day_column.selected .bar_track i {
+  background: #eabd77;
+}
+.bar_label {
+  display: block;
+  font-size: 8px;
+  margin-top: 10px;
+}
+.hour_chart {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  margin: 25px 0 14px;
+}
+.hour_column {
+  flex: 1;
+  min-width: 0;
+}
+.hour_column .bar_track {
+  height: 150px;
+}
+.hour_column .bar_track i {
+  margin: 0 1px;
+  background: linear-gradient(0deg, #50446f, #b9a7f4);
+  border-radius: 3px 3px 0 0;
+}
+.hour_column > span {
+  display: block;
+  font-size: 8px;
+  color: #8193aa;
+  height: 16px;
+  margin-top: 10px;
+}
+.table_scroll {
+  overflow: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+  font-size: 10px;
+}
+th {
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #8092aa;
+  padding: 12px 13px;
+  border-bottom: 1px solid #344151;
+  white-space: nowrap;
+}
+td {
+  padding: 13px;
+  border-bottom: 1px solid #27313e;
+  color: #aebbd0;
+  line-height: 1.6;
+}
+td small {
+  display: block;
+  color: #647b93;
+  font-size: 8px;
+  margin-top: 3px;
+}
+.table_date {
+  background: none;
+  border: 0;
+  color: inherit;
+  font-size: 10px;
+  padding: 0;
+}
+.highlight_row {
+  background: #24372d;
+}
+.recorded_hours {
+  color: #b6f6c6;
+}
+.daily_table tr {
+  cursor: pointer;
+}
+.calculation_notes {
+  border: 1px solid #344b3c;
+  border-radius: 9px;
+  background: #15221c;
+  padding: 20px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 12px;
+}
+.calculation_notes strong {
+  font-size: 12px;
+  color: #b6f6c6;
+}
+.calculation_notes p {
+  font-size: 10px;
+  color: #95aa9b;
+  line-height: 1.8;
+  margin: 8px 0;
+}
+.formula {
+  border: 1px solid #3b5144;
+  border-radius: 7px;
+  padding: 14px;
+}
+.formula code {
+  font-size: 11px;
+  color: #d0efda;
+}
+.formula small {
+  font-size: 9px;
+  color: #91a99a;
+  display: block;
+  margin-top: 10px;
+}
+.audit_filters {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.audit_filters button {
+  padding: 7px 10px;
+  font-size: 9px;
+}
+.audit_filters > span {
+  margin-left: auto;
+  font-size: 9px;
+  color: #7c91a9;
+  align-self: center;
+}
+.audit_scroll {
+  max-height: 380px;
+}
+.audit_scroll table {
+  min-width: 800px;
+}
+.audit_scroll thead {
+  position: sticky;
+  top: 0;
+  background: #111720;
+}
+.audit_scroll td:nth-child(4) {
+  min-width: 240px;
+}
+.source_tag {
+  font-size: 8px;
+  border: 1px solid #354356;
+  border-radius: 4px;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+.timestamp {
+  white-space: nowrap;
+}
+.activity_empty {
+  font-size: 11px;
+  color: #8799b0;
+  padding: 15px 0;
+}
+.audit_scroll a {
+  color: #c3f4ce;
+}
+@media (max-width: 1150px) {
+  .activity_metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .activity_charts {
+    grid-template-columns: 1fr;
+  }
+  .calculation_notes {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .activity_metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .activity_metrics > div {
+    padding: 14px;
+  }
+  .activity_panel {
+    padding: 15px;
+  }
+  .panel_heading {
+    flex-wrap: wrap;
+  }
+  .fact_badge {
+    display: none;
+  }
+  .view_switch button {
+    padding: 9px 12px;
+    font-size: 10px;
+  }
+  .daily_chart {
+    gap: 4px;
+  }
+  .bar_track i {
+    margin: 0 1px;
+  }
+}
+.daily_table table {
+  min-width: 660px;
+}
+.daily_table td:first-child {
+  white-space: nowrap;
+}

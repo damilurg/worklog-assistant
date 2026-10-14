@@ -3,9 +3,9 @@ import staticPlugin from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
-import { timingSafeEqual } from 'node:crypto';
 import { demoGraph } from '@worklog-assistant/shared';
-import { parseRange, readGraph } from './graph-query';
+import { parseRange, type readGraph } from './graph-query';
+import { readMongoGraph, closeMongoGraph } from './mongo-graph';
 export function createServer(
   options: {
     demo?: boolean;
@@ -23,6 +23,9 @@ export function createServer(
   }));
   app.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return;
+    const hostname = req.hostname;
+    if (!['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname))
+      return reply.code(403).send({ error: 'This API is available through localhost only' });
     const origin = req.headers.origin;
     if (origin) {
       try {
@@ -31,16 +34,6 @@ export function createServer(
       } catch {
         return reply.code(403).send({ error: 'Invalid origin' });
       }
-    }
-    const expected = process.env.GRAPH_API_KEY;
-    if (expected && !options.demo) {
-      const key = req.headers['x-api-key'];
-      if (
-        typeof key !== 'string' ||
-        Buffer.byteLength(key) !== Buffer.byteLength(expected) ||
-        !timingSafeEqual(Buffer.from(key), Buffer.from(expected))
-      )
-        return reply.code(401).send({ error: 'API key required' });
     }
   });
   app.get('/api/graph', async (req, reply) => {
@@ -52,12 +45,15 @@ export function createServer(
     }
     if (options.demo) return demoGraph;
     try {
-      return await (options.read ?? readGraph)(range);
+      return await (options.read ?? readMongoGraph)(range);
     } catch (e) {
       req.log.error(e);
       return reply
         .code(503)
-        .send({ error: 'Database unavailable. Check PostgreSQL and schema setup.' });
+        .send({
+          error:
+            'Graph storage unavailable. Check MongoDB, PostgreSQL and the existing CLI database setup.',
+        });
     }
   });
   app.post('/api/sync', async (req, reply) => {
@@ -93,7 +89,7 @@ export function createServer(
             },
           );
         });
-      return await (options.read ?? readGraph)(range);
+      return await (options.read ?? readMongoGraph)(range);
     } catch (e) {
       req.log.error(e);
       return reply.code(503).send({ error: 'Sync failed; existing data remains available.' });
@@ -103,5 +99,8 @@ export function createServer(
   });
   const root = options.staticRoot ?? resolve(__dirname, '../../web/dist/browser');
   if (existsSync(root)) app.register(staticPlugin, { root });
+  app.addHook('onClose', async () => {
+    await closeMongoGraph();
+  });
   return app;
 }

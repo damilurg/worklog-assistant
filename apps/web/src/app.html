@@ -17,14 +17,21 @@
     <h2>Worklog assistant</h2>
     <p class="subtle">{{ t.tagline }}</p>
     <div class="nav_section">{{ t.overview }}</div>
-    <button class="nav_item current" (click)="filter.set('all');focus.set(false)">
+    <button class="nav_item" [class.current]="view()==='activity'" (click)="view.set('activity')">
+      <span>▥</span> {{ t.activityOverview }}
+    </button>
+    <button
+      class="nav_item"
+      [class.current]="view()==='graph'"
+      (click)="view.set('graph');filter.set('all');focus.set(false)"
+    >
       <span>↔</span> {{ t.developmentGraph }} <small>{{ graph().nodes.length }}</small>
     </button>
     <div class="nav_section">{{ t.nodeTypes }}</div>
     @for(kind of kinds;track kind){<button
       class="nav_item"
       [class.chosen]="filter()===kind"
-      (click)="filter.set(filter()===kind?'all':kind)"
+      (click)="view.set('graph');filter.set(filter()===kind?'all':kind)"
     >
       <i [class]="'dot '+kind"></i>{{ labels[kind] }}<small>{{ count(kind) }}</small></button
     >}
@@ -63,18 +70,11 @@
     @if(showSettings()){
     <section class="settings">
       <div>
-        <strong>{{ t.apiConnection }}</strong>
+        <strong>{{ t.workspaceConfiguration }}</strong>
         <p>{{ t.connectionDescription }}</p>
+        <p>{{ graph().mode === 'demo' ? t.demoStorage : t.liveStorage }}</p>
       </div>
-      <label
-        >{{ t.apiKey }}
-        <input
-          type="password"
-          autocomplete="off"
-          [value]="apiKey()"
-          (input)="apiKey.set($any($event.target).value)"
-          [placeholder]="t.apiKeyPlaceholder" /></label
-      ><button class="button" (click)="load()">{{ t.connect }}</button>
+      <button class="button" (click)="load()" [disabled]="loading()">{{ t.refresh }}</button>
     </section>
     } @if(error()){
     <div class="error" role="alert">
@@ -93,6 +93,14 @@
     @if(graph().truncated){
     <div class="error">{{ t.truncated }}</div>
     }
+    <div class="view_switch">
+      <button [class.active]="view()==='activity'" (click)="view.set('activity')">
+        {{ t.activityOverview }}</button
+      ><button [class.active]="view()==='graph'" (click)="view.set('graph')">
+        {{ t.developmentGraph }}
+      </button>
+    </div>
+    @if(view()==='graph'){
     <div class="metrics">
       <div>
         <span>{{ t.issues }}</span
@@ -113,6 +121,194 @@
         >
       </div>
     </div>
+    } @if(view()==='activity'){ @if(activity();as a){
+    <section class="activity_metrics">
+      <div>
+        <span>{{t.rawEvents}}</span><strong>{{a.totals.events}}</strong
+        ><small>{{t.storedEvents}}</small>
+      </div>
+      <div>
+        <span>{{t.development}}</span><strong>{{a.totals.commits}}</strong
+        ><small>{{t.commitEvents}}</small>
+      </div>
+      <div>
+        <span>{{t.review}}</span><strong>{{a.totals.reviews}}</strong
+        ><small>{{t.reviewEvents}}</small>
+      </div>
+      <div>
+        <span>{{t.integration}}</span><strong>{{a.totals.mergedRequests}}</strong
+        ><small>{{t.mergedAt}}</small>
+      </div>
+      <div>
+        <span>{{t.recordedTime}}</span><strong>{{hours(a.totals.loggedSeconds)}}<em>h</em></strong
+        ><small>{{t.jiraRecorded}}</small>
+      </div>
+    </section>
+    <div class="activity_charts">
+      <section class="activity_panel">
+        <div class="panel_heading">
+          <div>
+            <h2>{{t.dailyActivity}}</h2>
+            <p>{{t.dailyDescription}}</p>
+          </div>
+          <span class="fact_badge">UTC · {{t.sourceFacts}}</span>
+        </div>
+        <div class="daily_chart">
+          @for(day of a.daily;track day.date){<button
+            class="day_column"
+            [class.selected]="inspectDate()===day.date"
+            (click)="inspectDate.set(inspectDate()===day.date?'':day.date)"
+            [attr.aria-label]="t.dayLabel(day.date,day.events)"
+            [attr.title]="t.dayLabel(day.date,day.events)"
+          >
+            <span class="bar_value">{{day.events}}</span>
+            <div class="bar_track"><i [style.height.%]="percent(day.events,dailyMax())"></i></div>
+            <span class="bar_label">{{day.date.slice(5)}}</span></button
+          >}
+        </div>
+        @if(!a.daily.length){
+        <p class="activity_empty">{{t.noActivity}}</p>
+        }
+      </section>
+      <section class="activity_panel">
+        <div class="panel_heading">
+          <div>
+            <h2>{{t.hourlyActivity}}</h2>
+            <p>{{t.hourlyDescription}}</p>
+          </div>
+          <span class="fact_badge">UTC</span>
+        </div>
+        <div class="hour_chart">
+          @for(hour of a.hourly;track hour.hour){
+          <div class="hour_column" [attr.title]="t.hourLabel(hour.hour,hour.events)">
+            <div class="bar_track"><i [style.height.%]="percent(hour.events,hourlyMax())"></i></div>
+            <span>{{hour.hour%4===0?hour.hour.toString().padStart(2,'0'):''}}</span>
+          </div>
+          }
+        </div>
+        <p class="chart_note">{{t.hourlyNote}}</p>
+      </section>
+    </div>
+    <section class="activity_panel daily_table">
+      <div class="panel_heading">
+        <div>
+          <h2>{{t.dayBreakdown}}</h2>
+          <p>{{t.loggedByStart}}</p>
+        </div>
+        <button class="button" (click)="inspectDate.set('')">{{t.allDays}}</button>
+      </div>
+      <div class="table_scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{{t.date}}</th>
+              <th>{{t.rawEvents}}</th>
+              <th>{{t.development}}</th>
+              <th>{{t.review}}</th>
+              <th>{{t.integration}}</th>
+              <th>{{t.recordedTime}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(day of a.daily;track day.date){
+            <tr
+              [class.highlight_row]="inspectDate()===day.date"
+              (click)="inspectDate.set(day.date)"
+            >
+              <td>
+                <button class="table_date" (click)="inspectDate.set(day.date)">{{day.date}}</button>
+              </td>
+              <td>{{day.events}}</td>
+              <td>{{day.commits}}</td>
+              <td>{{day.reviews}}</td>
+              <td>{{day.mergedRequests}}</td>
+              <td class="recorded_hours">{{hours(day.loggedSeconds)}} h</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="calculation_notes">
+      <div>
+        <strong>{{t.calculationTitle}}</strong>
+        <p>{{t.calculationDescription}}</p>
+      </div>
+      <div class="formula">
+        <code>{{a.totals.loggedSeconds}} seconds / 3600 = {{hours(a.totals.loggedSeconds)}} h</code
+        ><small>{{t.calculationWorklogs(a.totals.worklogRows)}}</small>
+      </div>
+      <p>{{t.deliveryNote}}</p>
+      <p>{{t.rawLimitNote}}</p>
+    </section>
+    <section class="activity_panel audit_panel">
+      <div class="panel_heading">
+        <div>
+          <h2>{{t.sourceRows}} @if(inspectDate()){<span>{{inspectDate()}}</span>}</h2>
+          <p>{{t.sourceRowsDescription}}</p>
+        </div>
+        <button class="button" (click)="exportRaw()">{{t.exportRaw}}</button>
+      </div>
+      <div class="audit_filters">
+        <button [class.active]="sourceType()==='all'" (click)="sourceType.set('all')">
+          {{t.allSources}}</button
+        ><button
+          [class.active]="sourceType()==='activity_events'"
+          (click)="sourceType.set('activity_events')"
+        >
+          GitLab events</button
+        ><button
+          [class.active]="sourceType()==='jira_worklogs'"
+          (click)="sourceType.set('jira_worklogs')"
+        >
+          Jira worklogs</button
+        ><button
+          [class.active]="sourceType()==='gitlab_merge_requests'"
+          (click)="sourceType.set('gitlab_merge_requests')"
+        >
+          Merged MRs</button
+        ><span>{{auditRows().length}} {{t.rows}}</span>
+      </div>
+      <div class="table_scroll audit_scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>{{t.timestamp}}</th>
+              <th>{{t.source}}</th>
+              <th>{{t.eventType}}</th>
+              <th>{{t.details}}</th>
+              <th>{{t.rawSeconds}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(row of auditRows();track row.source+':'+row.id){
+            <tr>
+              <td class="timestamp">
+                {{row.timestamp.replace('T',' ').slice(0,19)}}<small>{{row.id}}</small>
+              </td>
+              <td><span class="source_tag">{{row.source}}</span></td>
+              <td>{{row.type}}</td>
+              <td>
+                @if(safeUrl(row.url);as url){<a
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{row.title}} ↗</a
+                >}@else{<span>{{row.title}}</span>}<small>{{row.issueKeys.join(', ')}}</small>
+              </td>
+              <td>{{row.durationSeconds ?? '—'}}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if(!auditRows().length){
+      <p class="activity_empty">{{t.noSourceRows}}</p>
+      }
+    </section>
+    }@else{
+    <div class="activity_panel"><p>{{t.noActivity}}</p></div>
+    } }@else{
     <section class="graph_card">
       <div class="graph_toolbar">
         <div class="tabs">
@@ -234,6 +430,7 @@
         </aside>
       </div>
     </section>
+    }
     <footer>
       <span><i></i>{{graph().mode==='demo'?t.demoFooter:t.liveFooter}}</span
       ><span>{{ t.footer }}</span>

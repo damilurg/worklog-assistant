@@ -1,3 +1,4 @@
+import type { ActivitySummary } from './activity';
 export type NodeKind = 'issue' | 'mr' | 'commit' | 'person' | 'repository' | 'worklog';
 export interface GraphNode {
   id: string;
@@ -18,6 +19,9 @@ export interface Graph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   mode: 'demo' | 'live';
+  storage?: 'mongodb';
+  range?: { from: string; to: string; limit: number };
+  activity?: ActivitySummary;
   syncedAt?: string;
   truncated?: boolean;
 }

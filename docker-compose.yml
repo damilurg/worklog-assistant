@@ -15,6 +15,18 @@ services:
       timeout: 5s
       retries: 5
 
+  mongo:
+    image: mongo:8
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand({ ping: 1 })']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build: .
     ports:
@@ -22,7 +34,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-worklogs}
       - GRAPH_HOST=0.0.0.0
-      - GRAPH_API_KEY=${GRAPH_API_KEY}
+      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-worklog_graph}
       - GITLAB_INSTANCES=${GITLAB_INSTANCES}
       - GITLAB_AUTHOR_EMAILS=${GITLAB_AUTHOR_EMAILS}
       - GITLAB_AUTHOR_NAMES=${GITLAB_AUTHOR_NAMES}
@@ -33,9 +46,12 @@ services:
       - WORKDAY_HOURS=${WORKDAY_HOURS:-8}
       - TIMEZONE=${TIMEZONE:-Asia/Bishkek}
     depends_on:
+      mongo:
+        condition: service_healthy
       postgres:
         condition: service_healthy
 
 volumes:
+  mongo_data:
   postgres_data:
 

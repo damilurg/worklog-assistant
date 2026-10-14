@@ -1,3 +1,4 @@
+import { demoActivity } from './demoActivity';
 import { Graph, GraphNode, edge } from './graph';
 const nodes: GraphNode[] = [
   { id: 'worklog:1', kind: 'worklog', label: '2.0h', title: 'Session timeout implementation' },
@@ -73,6 +74,8 @@ const nodes: GraphNode[] = [
 ];
 export const demoGraph: Graph = {
   mode: 'demo',
+  range: { from: '2026-10-08', to: '2026-10-14', limit: 100 },
+  activity: demoActivity,
   nodes,
   edges: [
     edge('worklog:1', 'issue:DEV-142', 'logged'),
