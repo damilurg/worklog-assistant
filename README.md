@@ -141,22 +141,23 @@ pnpm build
 
 - [Русский README](README.ru.md)
 
+## Development graph
 
-## Development graph / Граф разработки
-
-После обычной настройки проекта запусти `pnpm graph` и открой http://localhost:3000. Команда соберёт монорепу и запустит API с Angular-интерфейсом. Используются существующие PostgreSQL, GitLab/Jira-клиенты и `.env`. Новая база и миграция не нужны.
+Run `pnpm graph` after the usual project setup, then open http://localhost:3000. The command builds the workspace and starts the existing API with an Angular UI. It uses the existing PostgreSQL database, GitLab/Jira clients, and `.env`; no new database or schema migration is required.
 
 ```bash
-pnpm graph        # реальные сохранённые данные
-pnpm graph:demo   # демограф без внешних API и PostgreSQL
+pnpm graph        # Existing workspace data
+pnpm graph:demo   # Sample graph without external APIs or PostgreSQL
 ```
 
-На странице выбери диапазон дат и нажми «Показать период» для чтения базы либо «Синхронизировать» для запуска существующего CLI `sync`. Команда не пишет worklogs в Jira. CLI сохраняет свою best-effort семантику: при отказе одного источника доступны старые данные; предупреждения остаются в серверных логах. Поиск, фильтры типов, детали узла, переходы в источники, масштаб и фокус на один/два уровня связей доступны в интерфейсе.
+Choose a date range and click **Apply dates** to read stored data, or **Sync workspace** to run the existing CLI `sync`. This action does not write worklogs to Jira. The CLI keeps its best-effort behavior: stored data remains available when a source fails, and warnings appear in server logs. Search, node-type filters, node details, source links, zoom, and one/two-level focus are available in the UI.
 
-Граф показывает проекты, коммиты, MR, задачи и worklogs. Связи извлекаются из уже сохранённых `detectedIssueKeys`, сообщений коммитов и MR/веток. Принадлежность коммита конкретному MR не выдумывается: такой связи пока нет в хранилище. GitLab commit authors и Jira worklog authors имеют отдельные идентификаторы. Данные отражают активность, отфильтрованную существующим CLI, а не всё содержимое GitLab.
+The graph includes projects, commits, merge requests, Jira issues, authors, and worklogs. Connections use stored `detectedIssueKeys`, commit messages, MR descriptions, and branch names. Commit-to-MR membership is omitted because it is not stored. GitLab commit authors and Jira worklog authors have separate identities. The graph reflects the activity imported by the existing CLI, rather than every item in GitLab.
 
-`GET /api/graph?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=100`, `POST /api/sync` с теми же query-параметрами. Даты графа трактуются в UTC, как и явные `--from/--to` существующего CLI. По умолчанию берутся последние 30 календарных дат UTC, до 100 записей каждого источника, предел 500. При усечении UI показывает предупреждение. База читается в read-only repeatable-read транзакции.
+`GET /api/graph?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=100` and `POST /api/sync` accept the same query parameters. Dates use UTC, matching explicit CLI `--from/--to` ranges. The default is the last 30 UTC calendar dates with up to 100 records per source; the maximum limit is 500. The UI warns when results are truncated. Database reads use a read-only repeatable-read transaction.
 
-API по умолчанию слушает localhost. `GRAPH_API_KEY` включает проверку `x-api-key`; ключ вводится в настройках интерфейса и остаётся только в памяти вкладки. Для Docker задай этот ключ; порт опубликован только на loopback. Для публичной эксплуатации нужны пользовательская авторизация и TLS. Токены GitLab/Jira не возвращаются в браузер.
+The API binds to localhost by default. Set `GRAPH_API_KEY` to require the `x-api-key` header. Enter this key in **Connections**; it stays in memory and clears when the page refreshes. Docker requires this key and exposes the port only on loopback. Public hosting requires user authentication and TLS. GitLab/Jira tokens are never returned to the browser.
 
-Разработка Angular: `pnpm graph:dev` (порт 4200, proxy на API 3000). Для проверки: `pnpm test`, `pnpm lint`, `pnpm build`. Angular находится в `apps/web`, чистый преобразователь данных графа и API — в `apps/api`, контракт — в `packages/shared/src/graph.ts`.
+The UI supports English only, with copy centralized in `apps/web/src/i18n/en.ts`. Document language is `en`, and Angular uses the `en-US` locale. Content imported from GitLab and Jira retains its original language.
+
+For Angular development, run `pnpm graph:dev` on port 4200 with a proxy to the API on port 3000. Validate with `pnpm test`, `pnpm lint`, and `pnpm build`. The UI is in `apps/web`, graph projection/API in `apps/api`, and the shared graph contract in `packages/shared/src/graph.ts`.

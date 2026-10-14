@@ -1,26 +1,26 @@
 <div class="shell">
   <aside class="rail">
     <a class="brand" href="/" aria-label="DevGraph">d<span>g</span></a
-    ><button class="rail_button active" aria-label="Граф" title="Граф">↔</button
+    ><button class="rail_button active" [attr.aria-label]="t.graph" [attr.title]="t.graph">↔</button
     ><button
       class="rail_button"
       (click)="showSettings.set(!showSettings())"
-      aria-label="Настройки"
-      title="Настройки"
+      [attr.aria-label]="t.settings"
+      [attr.title]="t.settings"
     >
       ⚙
     </button>
     <div class="rail_footer">DG<br /><small>0.1</small></div>
   </aside>
   <aside class="sidebar">
-    <div class="project_label">WORKSPACE <span>⌄</span></div>
+    <div class="project_label">{{ t.workspace }} <span>⌄</span></div>
     <h2>Worklog assistant</h2>
-    <p class="subtle">Development, connected.</p>
-    <div class="nav_section">ОБЗОР</div>
+    <p class="subtle">{{ t.tagline }}</p>
+    <div class="nav_section">{{ t.overview }}</div>
     <button class="nav_item current" (click)="filter.set('all');focus.set(false)">
-      <span>↔</span> Граф разработки <small>{{ graph().nodes.length }}</small>
+      <span>↔</span> {{ t.developmentGraph }} <small>{{ graph().nodes.length }}</small>
     </button>
-    <div class="nav_section">ТИПЫ ОБЪЕКТОВ</div>
+    <div class="nav_section">{{ t.nodeTypes }}</div>
     @for(kind of kinds;track kind){<button
       class="nav_item"
       [class.chosen]="filter()===kind"
@@ -30,103 +30,102 @@
     >}
     <div class="integration_card">
       <div class="integration_icon">↔</div>
-      <strong>Two sources. One story.</strong>
-      <p>Задачи и код в одном графе.</p>
+      <strong>{{ t.integrationTitle }}</strong>
+      <p>{{ t.integrationDescription }}</p>
       <div class="source"><span class="source_logo gitlab">◆</span>GitLab <i></i></div>
       <div class="source"><span class="source_logo jira">▰</span>Jira <i></i></div>
-      <div class="mode_label">
-        {{ graph().mode==='demo'?'Демонстрационные данные':'PostgreSQL' }}
-      </div>
+      <div class="mode_label">{{ graph().mode==='demo'?t.demoData:t.connectedWorkspace }}</div>
     </div>
     <div class="sidebar_bottom">
       <span class="avatar">M</span>
-      <div>My workspace<small>GitLab → Jira</small></div>
+      <div>{{ t.myWorkspace }}<small>GitLab → Jira</small></div>
     </div>
   </aside>
   <main>
     <header>
-      <div class="breadcrumb">Workspace <span>/</span> <b>Development graph</b></div>
-      <button class="button" (click)="showSettings.set(!showSettings())">⚙ Подключения</button>
+      <div class="breadcrumb">{{ t.workspace }} <span>/</span> <b>{{ t.developmentGraph }}</b></div>
+      <button class="button" (click)="showSettings.set(!showSettings())">
+        ⚙ {{ t.connections }}
+      </button>
     </header>
     <section class="page_heading">
-      <div class="eyebrow"><i></i> YOUR WORK, CONNECTED</div>
+      <div class="eyebrow"><i></i> {{ t.eyebrow }}</div>
       <div class="title_row">
         <div>
-          <h1>Всё связано<span>.</span></h1>
-          <p>Задачи, коммиты и worklogs. Твоя активность в одном графе.</p>
+          <h1>{{ t.title }}<span>.</span></h1>
+          <p>{{ t.description }}</p>
         </div>
         <button class="button primary" (click)="load(true)" [disabled]="loading()">
-          ↻ {{ loading()?'Синхронизация…':'Синхронизировать' }}
+          ↻ {{ loading()?t.syncing:t.sync }}
         </button>
       </div>
     </section>
     @if(showSettings()){
     <section class="settings">
       <div>
-        <strong>Подключение к API</strong>
-        <p>
-          Используются существующие настройки .env и база PostgreSQL. Ключ хранится только в памяти
-          этой страницы.
-        </p>
+        <strong>{{ t.apiConnection }}</strong>
+        <p>{{ t.connectionDescription }}</p>
       </div>
       <label
-        >API key
+        >{{ t.apiKey }}
         <input
           type="password"
           autocomplete="off"
           [value]="apiKey()"
           (input)="apiKey.set($any($event.target).value)"
-          placeholder="Для live-режима" /></label
-      ><button class="button" (click)="load()">Подключиться</button>
+          [placeholder]="t.apiKeyPlaceholder" /></label
+      ><button class="button" (click)="load()">{{ t.connect }}</button>
     </section>
     } @if(error()){
     <div class="error" role="alert">
-      {{error()}} @if(graph().mode==='demo'){<span>Показан демограф.</span>}
+      {{error()}} @if(graph().mode==='demo'){<span>{{ t.showingDemo }}</span>}
     </div>
     }
     <div class="date_range">
       <label
-        >С
+        >{{ t.from }}
         <input type="date" [value]="from()" (change)="from.set($any($event.target).value)" /></label
       ><label
-        >По <input type="date" [value]="to()" (change)="to.set($any($event.target).value)" /></label
-      ><button class="button" (click)="load()" [disabled]="loading()">Показать период</button>
+        >{{ t.to }}
+        <input type="date" [value]="to()" (change)="to.set($any($event.target).value)" /></label
+      ><button class="button" (click)="load()" [disabled]="loading()">{{ t.showPeriod }}</button>
     </div>
     @if(graph().truncated){
-    <div class="error">
-      Показан ограниченный срез активности. Сузь период, чтобы увидеть все связи.
-    </div>
+    <div class="error">{{ t.truncated }}</div>
     }
     <div class="metrics">
       <div>
-        <span>ЗАДАЧИ</span><strong>{{count('issue')}}<small>Jira issues</small></strong>
+        <span>{{ t.issues }}</span
+        ><strong>{{count('issue')}}<small>{{ t.jiraIssues }}</small></strong>
       </div>
       <div>
-        <span>MERGE REQUESTS</span><strong>{{count('mr')}}<small>GitLab changes</small></strong>
+        <span>{{ t.mergeRequests }}</span
+        ><strong>{{count('mr')}}<small>{{ t.gitlabChanges }}</small></strong>
       </div>
       <div>
-        <span>СВЯЗИ</span><strong>{{graph().edges.length}}<small>Connected context</small></strong>
+        <span>{{ t.relationships }}</span
+        ><strong>{{graph().edges.length}}<small>{{ t.connectedContext }}</small></strong>
       </div>
       <div>
-        <span>ИСТОЧНИК ДАННЫХ</span
+        <span>{{ t.dataSource }}</span
         ><strong class="metric_mode"
-          ><i></i>{{graph().mode==='demo'?'Demo workspace':'Live workspace'}}</strong
+          ><i></i>{{graph().mode==='demo'?t.demoWorkspace:t.liveWorkspace}}</strong
         >
       </div>
     </div>
     <section class="graph_card">
       <div class="graph_toolbar">
         <div class="tabs">
-          <button class="tab active">Граф связей</button
+          <button class="tab active">{{ t.graphTab }}</button
           ><span class="node_count"
-            >{{visible().nodes.length}} nodes · {{visible().edges.length}} edges</span
+            >{{ t.nodeCount(visible().nodes.length, visible().edges.length) }}</span
           >
         </div>
         <label class="search"
           ><span>⌕</span
           ><input
-            aria-label="Поиск узлов"
-            placeholder="Задача, MR, человек…"
+            [attr.aria-label]="t.search"
+            [placeholder]="t.searchPlaceholder"
             [value]="query()"
             (input)="query.set($any($event.target).value)"
         /></label>
@@ -134,17 +133,17 @@
       <div class="graph_layout">
         <div class="graph_view">
           <div class="graph_top">
-            <span class="demo_badge">{{graph().mode==='demo'?'DEMO':'LIVE'}}</span
+            <span class="demo_badge">{{graph().mode==='demo'?t.demo:t.live}}</span
             ><button class="focus_button" [class.enabled]="focus()" (click)="focus.set(!focus())">
-              ◎ {{focus()?'Фокус включён':'Фокус на узле'}}</button
+              ◎ {{focus()?t.focusOn:t.focusOff}}</button
             >@if(focus()){<button class="focus_button" (click)="depth.set(depth()===1?2:1)">
-              {{depth()}} уровень</button
+              {{ t.depth(depth()) }}</button
             >}
           </div>
           <svg
             viewBox="0 0 1180 670"
             class="network"
-            aria-label="Интерактивный граф разработки"
+            [attr.aria-label]="t.graphDescription"
             role="group"
           >
             <defs>
@@ -184,7 +183,7 @@
             </g>
           </svg>
           @if(!visible().nodes.length){
-          <div class="empty">Ничего не найдено. Измени поиск или фильтр.</div>
+          <div class="empty">{{ t.empty }}</div>
           }
           <div class="graph_bottom">
             <div class="legend">
@@ -193,10 +192,10 @@
               >}
             </div>
             <div class="zoom">
-              <button aria-label="Уменьшить" (click)="changeZoom(-.15)">−</button
-              ><button (click)="zoom.set(1)" aria-label="Сбросить масштаб">
+              <button [attr.aria-label]="t.zoomOut" (click)="changeZoom(-.15)">−</button
+              ><button (click)="zoom.set(1)" [attr.aria-label]="t.resetZoom">
                 {{ (zoom()*100).toFixed(0) }}%</button
-              ><button aria-label="Увеличить" (click)="changeZoom(.15)">+</button>
+              ><button [attr.aria-label]="t.zoomIn" (click)="changeZoom(.15)">+</button>
             </div>
           </div>
         </div>
@@ -210,7 +209,7 @@
           <h3>{{n.title}}</h3>
           @if(n.status){<span class="status"><i></i>{{n.status}}</span>}
           <div class="detail_rule"></div>
-          <div class="detail_caption">СВЯЗАННЫЕ ОБЪЕКТЫ <span>{{related().length}}</span></div>
+          <div class="detail_caption">{{ t.relatedObjects }} <span>{{related().length}}</span></div>
           <div class="related_list">
             @for(item of related();track item.id){<button
               class="related_item"
@@ -226,23 +225,18 @@
             [href]="url"
             target="_blank"
             rel="noopener noreferrer"
-            >Открыть в источнике ↗</a
+            >{{ t.openSource }} ↗</a
           >}@else{
-          <div class="detail_note">
-            {{graph().mode==='demo'?'Демоданные: ссылки появятся после подключения источников.':'У
-            этого объекта нет ссылки на источник.'}}
-          </div>
+          <div class="detail_note">{{graph().mode==='demo'?t.demoSourceNote:t.noSourceNote}}</div>
           }}@else{
-          <p class="detail_note">Выбери узел, чтобы увидеть связи.</p>
+          <p class="detail_note">{{ t.selectNode }}</p>
           }
         </aside>
       </div>
     </section>
     <footer>
-      <span
-        ><i></i>{{graph().mode==='demo'?'Demo mode · демонстрационные данные':'GitLab + Jira ·
-        PostgreSQL'}}</span
-      ><span>Built to see the whole story.</span>
+      <span><i></i>{{graph().mode==='demo'?t.demoFooter:t.liveFooter}}</span
+      ><span>{{ t.footer }}</span>
     </footer>
   </main>
 </div>

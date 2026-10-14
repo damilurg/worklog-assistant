@@ -1,7 +1,8 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, LOCALE_ID } from '@angular/core';
 import { Graph, GraphNode, NodeKind, neighborhood } from '../../../packages/shared/src/graph';
 import { demoGraph } from '../../../packages/shared/src/demoGraph';
+import { en } from './i18n/en';
 @Component({ selector: 'app-root', standalone: true, templateUrl: './app.html' })
 class App {
   graph = signal<Graph>(demoGraph);
@@ -16,14 +17,8 @@ class App {
   apiKey = signal('');
   showSettings = signal(false);
   kinds: NodeKind[] = ['issue', 'mr', 'commit', 'person', 'repository', 'worklog'];
-  labels: Record<string, string> = {
-    issue: 'Задачи',
-    mr: 'Merge requests',
-    commit: 'Коммиты',
-    person: 'Люди',
-    repository: 'Репозитории',
-    worklog: 'Worklogs',
-  };
+  readonly t = en;
+  readonly labels: Record<string, string> = en.nodeKinds;
   icons: Record<string, string> = {
     issue: '◇',
     mr: '↔',
@@ -117,16 +112,14 @@ class App {
       );
       if (!res.ok)
         throw new Error(
-          res.status === 401
-            ? 'Введите API key в настройках подключения.'
-            : `API недоступно (${res.status}). Проверь подключение к PostgreSQL.`,
+          res.status === 401 ? this.t.apiKeyRequired : this.t.apiUnavailable(res.status),
         );
       const g = (await res.json()) as Graph;
       this.graph.set(g);
       if (g.mode === 'live') this.focus.set(true);
       if (!g.nodes.some((n) => n.id === this.selected())) this.selected.set(g.nodes[0]?.id ?? '');
     } catch (e) {
-      this.error.set(e instanceof Error ? e.message : 'Ошибка подключения');
+      this.error.set(e instanceof Error ? e.message : this.t.connectionError);
     } finally {
       this.loading.set(false);
     }
@@ -135,4 +128,6 @@ class App {
     void this.load();
   }
 }
-bootstrapApplication(App).catch(console.error);
+bootstrapApplication(App, { providers: [{ provide: LOCALE_ID, useValue: en.locale }] }).catch(
+  console.error,
+);

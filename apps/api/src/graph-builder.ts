@@ -64,7 +64,7 @@ export function buildGraph(input: GraphInput): Graph {
         id,
         kind: 'issue',
         label: key,
-        title: issueTitles.get(key) || 'Задача ещё не загружена из Jira',
+        title: issueTitles.get(key) || 'Issue details have not been synced from Jira',
         url: input.jiraUrl
           ? `${input.jiraUrl.replace(/\/$/, '')}/browse/${encodeURIComponent(key)}`
           : undefined,

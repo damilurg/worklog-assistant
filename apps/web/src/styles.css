@@ -929,3 +929,11 @@ footer span:first-child {
     flex-wrap: wrap;
   }
 }
+
+.project_label,
+.nav_section,
+.eyebrow,
+.metrics > div > span,
+.detail_caption {
+  text-transform: uppercase;
+}
