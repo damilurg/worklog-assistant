@@ -1289,3 +1289,18 @@ td small {
 .daily_table td:first-child {
   white-space: nowrap;
 }
+
+.loaded_range {
+  font-size: 11px;
+  color: #aac0b1;
+  margin: 0 0 18px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 10px;
+  color: #8b9bb1;
+}

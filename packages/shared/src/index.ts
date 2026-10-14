@@ -8,3 +8,5 @@ export * from './graph';
 export * from './demoGraph';
 
 export * from './activity';
+
+export * from './demoActivity';

@@ -1,11 +1,10 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { Component, computed, signal, LOCALE_ID } from '@angular/core';
 import { Graph, GraphNode, NodeKind, neighborhood } from '../../../packages/shared/src/graph';
-import { demoGraph } from '../../../packages/shared/src/demoGraph';
 import { en } from './i18n/en';
 @Component({ selector: 'app-root', standalone: true, templateUrl: './app.html' })
 class App {
-  graph = signal<Graph>(demoGraph);
+  graph = signal<Graph>({ mode: 'live', nodes: [], edges: [] });
   selected = signal('issue:DEV-142');
   query = signal('');
   filter = signal<string>('all');
@@ -18,6 +17,34 @@ class App {
   view = signal<'activity' | 'graph'>('activity');
   inspectDate = signal('');
   sourceType = signal('all');
+  auditPage = signal(0);
+  readonly pageSize = 20;
+  previousPage = (page: number) => Math.max(0, page - 1);
+  nextPage = (page: number) => Math.min(this.pageCount() - 1, page + 1);
+  private requestId = 0;
+  pageRows = computed(() =>
+    this.auditRows().slice(
+      this.auditPage() * this.pageSize,
+      (this.auditPage() + 1) * this.pageSize,
+    ),
+  );
+  pageCount = computed(() => Math.max(1, Math.ceil(this.auditRows().length / this.pageSize)));
+  setDate(which: 'from' | 'to', value: string) {
+    this[which].set(value);
+    if (this.from() && this.to() && this.from() <= this.to()) void this.load();
+    else {
+      this.error.set(this.t.invalidRange);
+      this.graph.set({ mode: this.graph().mode, nodes: [], edges: [] });
+    }
+  }
+  setDay(date: string) {
+    this.inspectDate.set(date);
+    this.auditPage.set(0);
+  }
+  setSource(source: string) {
+    this.sourceType.set(source);
+    this.auditPage.set(0);
+  }
   activity = computed(() => this.graph().activity);
   auditRows = computed(() =>
     (this.activity()?.rows ?? []).filter(
@@ -144,14 +171,17 @@ class App {
   changeZoom(amount: number) {
     this.zoom.update((z) => Math.min(1.8, Math.max(0.55, z + amount)));
   }
-  from = signal(new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10));
+  from = signal(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
   to = signal(new Date().toISOString().slice(0, 10));
   async load(sync = false) {
+    const requestId = ++this.requestId;
+    const from = this.from(),
+      to = this.to();
     this.loading.set(true);
     this.error.set('');
     try {
       const res = await fetch(
-        `/api/${sync ? 'sync' : 'graph'}?from=${encodeURIComponent(this.from())}&to=${encodeURIComponent(this.to())}`,
+        `/api/${sync ? 'sync' : 'graph'}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
         {
           method: sync ? 'POST' : 'GET',
         },
@@ -163,13 +193,19 @@ class App {
         );
       }
       const g = (await res.json()) as Graph;
+      if (requestId !== this.requestId) return;
       this.graph.set(g);
-      if (g.mode === 'live') this.focus.set(true);
+      this.inspectDate.set('');
+      this.sourceType.set('all');
+      this.auditPage.set(0);
+      this.focus.set(true);
       if (!g.nodes.some((n) => n.id === this.selected())) this.selected.set(g.nodes[0]?.id ?? '');
     } catch (e) {
+      if (requestId !== this.requestId) return;
+      this.graph.set({ mode: 'live', nodes: [], edges: [] });
       this.error.set(e instanceof Error ? e.message : this.t.connectionError);
     } finally {
-      this.loading.set(false);
+      if (requestId === this.requestId) this.loading.set(false);
     }
   }
   constructor() {

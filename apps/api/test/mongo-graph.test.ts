@@ -64,3 +64,32 @@ describe('MongoDB graph projection', () => {
     await app.close();
   });
 });
+
+it('reads existing MongoDB snapshots without querying the CLI database', async () => {
+  const source = vi.fn(async () => demoGraph);
+  const saved = {
+    _id: '2026-10-01:2026-10-14:100',
+    graph: { ...demoGraph, storage: 'mongodb' as const },
+    updatedAt: new Date(),
+  };
+  const collection = { findOne: vi.fn(async () => saved), replaceOne: vi.fn() };
+  const graph = await new MongoGraphStore(collection, source).read(range);
+  expect(graph).toEqual(saved.graph);
+  expect(source).not.toHaveBeenCalled();
+  expect(collection.replaceOne).not.toHaveBeenCalled();
+});
+it('builds a missing projection once, then serves it from MongoDB', async () => {
+  let saved: GraphSnapshot | null = null;
+  const source = vi.fn(async () => demoGraph);
+  const collection = {
+    findOne: vi.fn(async () => saved),
+    replaceOne: vi.fn(async (_filter, snapshot: GraphSnapshot) => {
+      saved = snapshot;
+    }),
+  };
+  const store = new MongoGraphStore(collection, source);
+  await store.read(range);
+  await store.read(range);
+  expect(source).toHaveBeenCalledTimes(1);
+  expect(collection.replaceOne).toHaveBeenCalledTimes(1);
+});

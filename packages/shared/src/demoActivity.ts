@@ -23,7 +23,7 @@ const daily = Array.from({ length: 7 }, (_, i) => {
           : n < commits + reviews
             ? 'Review: DEV-145 Keyboard navigation'
             : 'MR: DEV-138 Workspace tooling',
-      issueKeys: ['DEV-142'],
+      issueKeys: [n < commits ? 'DEV-142' : n < commits + reviews ? 'DEV-145' : 'DEV-138'],
     });
   rows.push({
     id: `demo-log-${i}`,

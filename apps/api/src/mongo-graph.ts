@@ -21,6 +21,12 @@ export class MongoGraphStore {
     private collection: SnapshotCollection,
     private source: (range: Range) => Promise<Graph> = readGraph,
   ) {}
+  async read(range: Range): Promise<Graph> {
+    const snapshot = await this.collection.findOne({
+      _id: `${range.from}:${range.to}:${range.limit}`,
+    });
+    return snapshot?.graph ?? this.refresh(range);
+  }
   async refresh(range: Range): Promise<Graph> {
     // Build before replacing: a failed CLI-data read preserves the previous snapshot.
     const graph = await this.source(range);
@@ -59,8 +65,28 @@ async function collection(): Promise<Collection<GraphSnapshot>> {
   }
   return collectionPromise;
 }
+const reads = new Map<string, Promise<Graph>>();
 export async function readMongoGraph(range: Range): Promise<Graph> {
-  return new MongoGraphStore(await collection()).refresh(range);
+  const key = `${range.from}:${range.to}:${range.limit}`;
+  let pending = reads.get(key);
+  if (!pending) {
+    pending = collection()
+      .then((c) => new MongoGraphStore(c).read(range))
+      .finally(() => {
+        reads.delete(key);
+      });
+    reads.set(key, pending);
+  }
+  return pending;
+}
+export async function refreshMongoGraph(range: Range): Promise<Graph> {
+  // Complete earlier projections before replacing the post-sync snapshot.
+  await Promise.allSettled([...reads.values()]);
+  const snapshots = await collection();
+  const graph = await new MongoGraphStore(snapshots).refresh(range);
+  // Other date ranges must rebuild once from the newly synchronized CLI data.
+  await snapshots.deleteMany({ _id: { $ne: `${range.from}:${range.to}:${range.limit}` } });
+  return graph;
 }
 export async function closeMongoGraph(): Promise<void> {
   await client?.close();

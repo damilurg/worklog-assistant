@@ -3,6 +3,11 @@ import type { NodeKind } from '../../../../packages/shared/src/graph';
 /** English is the only supported UI locale. Source content keeps its original language. */
 export const en = {
   locale: 'en-US',
+  loadedRange: (from: string, to: string) => `Showing ${from} — ${to}`,
+  invalidRange: 'Choose valid dates with the start date before or equal to the end date.',
+  previous: 'Previous',
+  next: 'Next',
+  pageLabel: (page: number, total: number) => `Page ${page} of ${total}`,
   activityOverview: 'Activity overview',
   rawEvents: 'Source events',
   storedEvents: 'Stored GitLab activity rows',

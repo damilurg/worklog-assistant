@@ -3,9 +3,9 @@ import staticPlugin from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
-import { demoGraph } from '@worklog-assistant/shared';
+import { demoForRange } from './demo-range';
 import { parseRange, type readGraph } from './graph-query';
-import { readMongoGraph, closeMongoGraph } from './mongo-graph';
+import { readMongoGraph, refreshMongoGraph, closeMongoGraph } from './mongo-graph';
 export function createServer(
   options: {
     demo?: boolean;
@@ -43,17 +43,15 @@ export function createServer(
     } catch (e) {
       return reply.code(400).send({ error: (e as Error).message });
     }
-    if (options.demo) return demoGraph;
+    if (options.demo) return demoForRange(range);
     try {
       return await (options.read ?? readMongoGraph)(range);
     } catch (e) {
       req.log.error(e);
-      return reply
-        .code(503)
-        .send({
-          error:
-            'Graph storage unavailable. Check MongoDB, PostgreSQL and the existing CLI database setup.',
-        });
+      return reply.code(503).send({
+        error:
+          'Graph storage unavailable. Check MongoDB, PostgreSQL and the existing CLI database setup.',
+      });
     }
   });
   app.post('/api/sync', async (req, reply) => {
@@ -63,7 +61,7 @@ export function createServer(
     } catch (e) {
       return reply.code(400).send({ error: (e as Error).message });
     }
-    if (options.demo) return demoGraph;
+    if (options.demo) return demoForRange(range);
     if (syncing) return reply.code(409).send({ error: 'Sync already running' });
     syncing = true;
     try {
@@ -89,7 +87,7 @@ export function createServer(
             },
           );
         });
-      return await (options.read ?? readMongoGraph)(range);
+      return await (options.read ?? refreshMongoGraph)(range);
     } catch (e) {
       req.log.error(e);
       return reply.code(503).send({ error: 'Sync failed; existing data remains available.' });
