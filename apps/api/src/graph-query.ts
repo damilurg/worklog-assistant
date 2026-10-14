@@ -19,7 +19,7 @@ export interface Range {
 }
 export function parseRange(query: Record<string, unknown>): Range {
   const today = new Date().toISOString().slice(0, 10);
-  const ago = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+  const ago = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const from = query.from ?? ago,
     to = query.to ?? today;
   const valid = (v: unknown): v is string =>
